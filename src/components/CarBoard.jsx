@@ -5,7 +5,7 @@ const ABSENT="__absent";
 // Bilarna som rutor med barnen som chips. Chipsen kan dras (mus och touch via pointer events)
 // eller tryckas på och sedan flyttas genom att trycka på en ruta.
 // onMove(barn, förare) flyttar till en bil, onMove(barn, null) markerar att barnet inte deltar.
-export default function CarBoard({cars,unplaced,absent,onMove}){
+export default function CarBoard({cars,unplaced,absent,moved=[],onMove}){
   const drag=useRef(null);
   const [ghost,setGhost]=useState(null);
   const [over,setOver]=useState(null);
@@ -15,7 +15,6 @@ export default function CarBoard({cars,unplaced,absent,onMove}){
     if(target===ABSENT) return true;
     const car=cars.find(c=>c.name===target);
     if(!car || car.kids.includes(kid)) return false;
-    if(cars.some(c=>c.name===kid)) return target===kid; // förarens barn åker bara i egen bil
     return car.kids.length<car.seats;
   };
   const drop=(kid,target)=>{
@@ -39,7 +38,7 @@ export default function CarBoard({cars,unplaced,absent,onMove}){
     },
     onPointerCancel:()=>{drag.current=null; setGhost(null); setOver(null);},
   });
-  const chip=(kid,extra="")=><button key={kid} type="button" className={"chip on draggable"+extra+(selected===kid?" selected":"")+(ghost?.kid===kid?" dragging":"")} {...chipHandlers(kid)}>{kid}</button>;
+  const chip=(kid,extra="")=><button key={kid} type="button" title={moved.includes(kid)?"Manuellt flyttad":undefined} className={"chip on draggable"+extra+(moved.includes(kid)?" moved":"")+(selected===kid?" selected":"")+(ghost?.kid===kid?" dragging":"")} {...chipHandlers(kid)}>{kid}</button>;
   const box=(target,className,head,kids)=>{
     const active=ghost||selected, kid=ghost?.kid??selected;
     const state=active&&target!==null ? (canDrop(kid,target)?(over===target?" over":" can-drop"):" no-drop") : "";

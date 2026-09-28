@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#174ea6" />
+    <meta name="theme-color" content="#212529" />
     <title>Handboll – Samåkning</title>
+    <script>
+      // Sätt valt tema innan appen laddats, så att sidan inte blinkar i fel tema.
+      try{var t=localStorage.getItem("carpooling-theme"+(/[?&]idag=/.test(location.search)?"-test":""));if(t)document.documentElement.dataset.theme=t}catch(e){}
+    </script>
   </head>
   <body>
     <div id="root"></div>

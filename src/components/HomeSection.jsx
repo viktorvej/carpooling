@@ -13,13 +13,14 @@ const list=names=>names.length<2?names.join(""):names.slice(0,-1).join(", ")+" o
 // Vad gäller för min familj åt ett håll: kör jag, och vem ska med? Annars: vem åker mitt barn med?
 function myTrip(r,me){
   const own=r.cars.find(c=>c.name===me);
+  const car=r.cars.find(c=>c.kids.includes(me));
   if(own){
     const others=own.kids.filter(k=>k!==me);
-    return {drive:true,text:<>Du kör{others.length?<> – ta med <b>{list(others)}</b></>:" – inga fler barn"}</>};
+    const elsewhere=car && car!==own && <> · {me} åker med <b>{car.name}</b></>;
+    return {drive:true,text:<>Du kör{others.length?<> – ta med <b>{list(others)}</b></>:" – inga fler barn"}{elsewhere}</>};
   }
-  const car=r.cars.find(c=>c.kids.includes(me));
   if(car) return {text:<>{me} åker med <b>{car.name}</b></>};
-  return {warn:true,text:<>{me} har ingen plats än</>};
+  return {warn:true,text:<>⚠️ {me} har ingen plats än</>};
 }
 
 export default function HomeSection({season,calc,me,onEdit}){

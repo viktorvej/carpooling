@@ -15,7 +15,7 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
   const needed=attending.length;
   const capacity=Object.values(picked).reduce((a,b)=>a+b,0), short=capacity<needed;
   const [moves,setMoves]=useState(()=>state.carOverride[key(edit.date,edit.dir)]||{});
-  const {cars,unplaced}=assignCars(Object.entries(picked).map(([name,seats])=>({name,seats})),attending,moves);
+  const {cars,unplaced,moved}=assignCars(Object.entries(picked).map(([name,seats])=>({name,seats})),attending,moves);
   const keptMoves=()=>Object.fromEntries(Object.entries(moves).filter(([kid,car])=>attending.includes(kid) && car in picked));
   // Samma förare, platser och placering även åt andra hållet. Då låses förarna så att båda blir lika.
   const other=edit.dir==="dit"?"hem":"dit";
@@ -38,7 +38,7 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
     </div>)}</div>
     <div className={"capacity"+(short?" short":"")}>{needed} barn · {capacity} platser{short&&(frozen?` · ${needed-capacity} saknas`:" · resten fylls på automatiskt")}</div>
     <h4 className="modal-subtitle">{frozen?"Vem åkte med vem":"Vem åker med vem"} <span>dra barnen mellan bilarna · deltar-ändringar gäller både dit och hem</span></h4>
-    <CarBoard cars={cars} unplaced={unplaced} absent={girls.filter(g=>!attending.includes(g))} onMove={moveKid}/>
+    <CarBoard cars={cars} unplaced={unplaced} moved={moved} absent={girls.filter(g=>!attending.includes(g))} onMove={moveKid}/>
     <div className="modal-actions"><button className="secondary" onClick={onClose}>Avbryt</button>{!frozen&&<button className="secondary" onClick={()=>save(null,{})}>Automatisk</button>}<span className="spacer"/>
       <span className="save-group"><label className="toggle"><input type="checkbox" checked={both} onChange={e=>setBoth(e.target.checked)}/><span className="switch"/>Gäller även {other.toUpperCase()}</label><button className="primary" onClick={()=>save(lockDrivers||both?picked:null,keptMoves())}>Spara</button></span></div></div></div>
 }

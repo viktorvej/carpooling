@@ -10,25 +10,30 @@ export function seatsFor(state,date,dir,name){return clampSeats(state.seatOverri
 
 export function defaultAttending(state,day){return girls.filter(g=>state.attendance[g][day]==="J")}
 
-// Placerar barnen i bilarna: förarens eget barn i egen bil, sedan manuella flyttar
-// (overrides: {barn: förare}), sedan resten i bilen med flest lediga platser.
+// Placerar barnen i bilarna: förarens eget barn i egen bil (kan flyttas manuellt), resten i bilen med flest lediga platser.
+// Manuella flyttar (overrides: {barn: förare}) läggs sedan ovanpå, en i taget, så att bara
+// det flyttade barnet byter bil och de andra stannar där de automatiskt placerades.
 export function assignCars(drivers, attending, overrides={}){
   const cars=drivers.map(d=>({name:d.name,seats:d.seats,kids:[]}));
   const byName=Object.fromEntries(cars.map(c=>[c.name,c]));
   const hasRoom=c=>c.kids.length<c.seats;
-  const place=(kid,car)=>car.kids.push(kid);
-  const placed=kid=>cars.some(c=>c.kids.includes(kid));
-  for(const c of cars) if(attending.includes(c.name)) place(c.name,c);
+  const carOf=kid=>cars.find(c=>c.kids.includes(kid));
+  for(const c of cars) if(attending.includes(c.name)) c.kids.push(c.name);
   for(const kid of attending){
-    const c=byName[overrides[kid]];
-    if(!placed(kid) && c && hasRoom(c)) place(kid,c);
-  }
-  for(const kid of attending){
-    if(placed(kid)) continue;
+    if(carOf(kid)) continue;
     const c=cars.filter(hasRoom).sort((a,b)=>(b.seats-b.kids.length)-(a.seats-a.kids.length))[0];
-    if(c) place(kid,c);
+    if(c) c.kids.push(kid);
   }
-  return {cars,unplaced:attending.filter(k=>!placed(k))};
+  const moved=[];
+  for(const [kid,target] of Object.entries(overrides)){
+    const to=byName[target], from=carOf(kid);
+    if(!attending.includes(kid) || !to) continue;
+    if(to===from){moved.push(kid); continue;}
+    if(!hasRoom(to)) continue;
+    if(from) from.kids=from.kids.filter(k=>k!==kid);
+    to.kids.push(kid); moved.push(kid);
+  }
+  return {cars,unplaced:attending.filter(k=>!carOf(k)),moved};
 }
 
 // today (ISO-datum): träningar före detta datum räknas som genomförda i "soFar".
@@ -43,7 +48,8 @@ export function calculate(state, dates, today){
     const frozen=state.history[x.date];
     const attending=frozen ? frozen.attending : state.attendanceOverride[x.date] ?? defaultAttending(state,x.day);
     for(const g of attending) attends[g]++;
-    result[x.date]={attending,frozen:!!frozen};
+    const attendanceChanged=frozen ? !!frozen.attendanceEdited : !!state.attendanceOverride[x.date];
+    result[x.date]={attending,frozen:!!frozen,attendanceChanged};
     const needed=attending.length;
     for(const dir of ["dit","hem"]){
       let drivers;

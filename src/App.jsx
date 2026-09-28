@@ -20,6 +20,11 @@ export default function App(){
   const me=girls.includes(storedMe)?storedMe:null;
   const [onboarding,setOnboarding]=useState(false);
   const [admin,setAdmin]=useDeviceValue("admin");
+  // "light" eller "dark" tvingar ett tema; utan värde följer appen enhetens inställning.
+  const [theme,setTheme]=useDeviceValue("theme");
+  useEffect(()=>{
+    if(theme) document.documentElement.dataset.theme=theme; else delete document.documentElement.dataset.theme;
+  },[theme]);
   const season=useMemo(seasonDates,[]);
   const todayIso=isoDate(now());
   const calc=useMemo(()=>calculate(state,season,todayIso),[state,season,todayIso]);
@@ -43,7 +48,9 @@ export default function App(){
       if(s.history[date]){
         const drivers=Object.entries(picked||{}).map(([name,seats])=>({name,seats,manual:true}));
         const day={...s.history[date],[dir]:{drivers}};
-        if(attending) day.attending=attending;
+        if(attending && (attending.length!==day.attending.length || attending.some(g=>!day.attending.includes(g)))){
+          day.attending=attending; day.attendanceEdited=true;
+        }
         return {...s,history:{...s.history,[date]:day}};
       }
       const manual={...s.manual}, seatOverride={...s.seatOverride}, prefix=key(date,dir)+"|";
@@ -79,7 +86,7 @@ export default function App(){
       {tab==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
       {tab==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
       {tab==="balance" && <BalanceSection calc={calc}/>}
-      {tab==="settings" && <SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} admin={!!admin} setAdmin={setAdmin} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
+      {tab==="settings" && <SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} admin={!!admin} setAdmin={setAdmin} theme={theme} setTheme={setTheme} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
       {tab==="admin" && admin && <AdminSection state={state} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
     </main>
     <nav>{[
