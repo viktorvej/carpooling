@@ -4,7 +4,7 @@ import { key, DEFAULT_SEATS } from "./schedule.js";
 // Översätter mellan appens state och databasens dokument, så att varje ändring bara
 // skriver de dokument som berörs:
 //   families/{namn}      {attendance, drive, seats, confirmedAt?}
-//   days/{datum}         {attendanceOverride?, history?}
+//   days/{datum}         {attendanceOverride?: {barn: true|false}, history?}
 //   trips/{datum|dit}    {manual?, seatOverride?: {namn: platser}, carOverride?: {barn: förare}}
 export const collections=["families","days","trips"];
 
@@ -17,6 +17,11 @@ export function emptyState(){
     // {namn: datum} när föräldern själv senast bekräftade familjens inställningar.
     confirmed: {},
   };
+}
+
+// Äldre data sparade närvaron per datum som en lista över deltagare; nu {barn: true|false}.
+export function normalizeAttendanceOverride(v){
+  return Array.isArray(v) ? Object.fromEntries(girls.map(g=>[g,v.includes(g)])) : v;
 }
 
 export function toDocs(state){
@@ -47,7 +52,7 @@ export function fromDocs(docs){
     if(f.confirmedAt) s.confirmed[g]=f.confirmedAt;
   }
   for(const [d,v] of Object.entries(docs.days||{})){
-    if(v.attendanceOverride) s.attendanceOverride[d]=v.attendanceOverride;
+    if(v.attendanceOverride) s.attendanceOverride[d]=normalizeAttendanceOverride(v.attendanceOverride);
     if(v.history) s.history[d]=v.history;
   }
   for(const [t,v] of Object.entries(docs.trips||{})){

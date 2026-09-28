@@ -8,7 +8,48 @@ export function clampSeats(n){const v=Number(n); return Number.isFinite(v)?Math.
 // Platser = antal barn bilen tar, inklusive förarens eget barn.
 export function seatsFor(state,date,dir,name){return clampSeats(state.seatOverride[key(date,dir,name)] ?? state.seats[name])}
 
-export function defaultAttending(state,day){return girls.filter(g=>state.attendance[g][day]==="J")}
+// Närvaro: "J" och "?" (Ibland) planeras in, "N" inte. För en enskild träning kan
+// attendanceOverride[datum] = {barn: true|false} ange uttryckliga svar eller ändringar.
+// "Ibland"-barn utan svar räknas som obekräftade, så att appen kan påminna.
+const planned=(state,g,day)=>state.attendance[g][day]!=="N";
+const maybe=(state,g,day)=>state.attendance[g][day]==="?";
+
+export function defaultAttending(state,day){return girls.filter(g=>planned(state,g,day))}
+
+export function dayAttendance(state,date,day){
+  const o=state.attendanceOverride[date]||{};
+  return {
+    attending:girls.filter(g=>o[g] ?? planned(state,g,day)),
+    unconfirmed:girls.filter(g=>maybe(state,g,day) && o[g]===undefined),
+    // Svar från "Ibland"-familjer är förväntade och räknas inte som ändrad närvaro.
+    changed:girls.some(g=>!maybe(state,g,day) && o[g]!==undefined && o[g]!==planned(state,g,day)),
+  };
+}
+
+// Sparar närvaron från Ändra: bara barn vars närvaro faktiskt ändrats får ett uttryckligt värde,
+// så att någon annans ändring inte räknas som ett svar från en "Ibland"-familj.
+// reset (Automatisk) tar bort ändringar men behåller svar från "Ibland"-familjer.
+export function withAttendance(state,date,day,attending,{reset=false}={}){
+  const prev=state.attendanceOverride[date]||{}, o={};
+  for(const g of girls){
+    if(prev[g]!==undefined && (!reset || maybe(state,g,day))) o[g]=prev[g];
+    if(!reset){const now=attending.includes(g); if(now!==(o[g] ?? planned(state,g,day))) o[g]=now;}
+    if(!maybe(state,g,day) && o[g]===planned(state,g,day)) delete o[g];
+  }
+  const all={...state.attendanceOverride};
+  if(Object.keys(o).length) all[date]=o; else delete all[date];
+  return {...state,attendanceOverride:all};
+}
+
+// Förälderns eget svar (Kommer/Kommer inte). Ett svar som stämmer med inställningen sparas inte som
+// undantag, utom för "Ibland" där själva svaret behövs för att träningen ska räknas som bekräftad.
+export function answerAttendance(state,date,day,name,coming){
+  const o={...state.attendanceOverride[date],[name]:coming};
+  if(!maybe(state,name,day) && coming===planned(state,name,day)) delete o[name];
+  const all={...state.attendanceOverride};
+  if(Object.keys(o).length) all[date]=o; else delete all[date];
+  return {...state,attendanceOverride:all};
+}
 
 // Placerar barnen i bilarna: förarens eget barn i egen bil (kan flyttas manuellt), resten i bilen med flest lediga platser.
 // Manuella flyttar (overrides: {barn: förare}) läggs sedan ovanpå, en i taget, så att bara
@@ -50,11 +91,13 @@ export function calculate(state, dates, today, dirWeight=DIR_BALANCE_WEIGHT){
   for(const x of dates){
     if(!soFar && x.date>=today) soFar={drives:{...drives},attends:{...attends}};
     // Frysta (passerade) träningar räknas från historiken, inte från nuvarande inställningar.
-    const frozen=state.history[x.date];
-    const attending=frozen ? frozen.attending : state.attendanceOverride[x.date] ?? defaultAttending(state,x.day);
+    // (Bara före idag, så att testläget med ett tidigare ?idag-datum inte låser "framtida" träningar.)
+    const frozen=x.date<today && state.history[x.date];
+    const planned=frozen ? null : dayAttendance(state,x.date,x.day);
+    const attending=frozen ? frozen.attending : planned.attending;
     for(const g of attending) attends[g]++;
-    const attendanceChanged=frozen ? !!frozen.attendanceEdited : !!state.attendanceOverride[x.date];
-    result[x.date]={attending,frozen:!!frozen,attendanceChanged};
+    const attendanceChanged=frozen ? !!frozen.attendanceEdited : planned.changed;
+    result[x.date]={attending,frozen:!!frozen,attendanceChanged,unconfirmed:frozen?[]:planned.unconfirmed};
     const needed=attending.length;
     for(const dir of ["dit","hem"]){
       let drivers;

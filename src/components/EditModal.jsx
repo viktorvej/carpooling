@@ -20,11 +20,14 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
   // Samma förare, platser och placering även åt andra hållet. Då låses förarna så att båda blir lika.
   const other=edit.dir==="dit"?"hem":"dit";
   const [both,setBoth]=useState(false);
-  function save(drivers,moves){
-    onSave(edit.date,edit.dir,drivers,attending,moves);
-    if(both) onSave(edit.date,other,drivers,attending,moves);
+  function save(drivers,moves,resetAttendance=false){
+    onSave(edit.date,edit.dir,drivers,attending,moves,resetAttendance);
+    if(both) onSave(edit.date,other,drivers,attending,moves,resetAttendance);
     onClose();
   }
+  // Automatisk tar bort alla manuella ändringar: förare, platser, flyttade barn och ändrad närvaro
+  // (svar från "Ibland"-familjer ligger kvar).
+  const reset=()=>save(null,{},true);
   // car === null betyder att barnet inte deltar.
   function moveKid(kid,car){
     setAttending(a=>car===null ? a.filter(x=>x!==kid) : a.includes(kid) ? a : girls.filter(x=>x===kid||a.includes(x)));
@@ -39,6 +42,6 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
     <div className={"capacity"+(short?" short":"")}>{needed} barn · {capacity} platser{short&&(frozen?` · ${needed-capacity} saknas`:" · resten fylls på automatiskt")}</div>
     <h4 className="modal-subtitle">{frozen?"Vem åkte med vem":"Vem åker med vem"} <span>dra barnen mellan bilarna · deltar-ändringar gäller både dit och hem</span></h4>
     <CarBoard cars={cars} unplaced={unplaced} moved={moved} absent={girls.filter(g=>!attending.includes(g))} onMove={moveKid}/>
-    <div className="modal-actions"><button className="secondary" onClick={onClose}>Avbryt</button>{!frozen&&<button className="secondary" onClick={()=>save(null,{})}>Automatisk</button>}<span className="spacer"/>
+    <div className="modal-actions"><button className="secondary" onClick={onClose}>Avbryt</button>{!frozen&&<button className="secondary" onClick={reset}>Automatisk</button>}<span className="spacer"/>
       <span className="save-group"><label className="toggle"><input type="checkbox" checked={both} onChange={e=>setBoth(e.target.checked)}/><span className="switch"/>Gäller även {other.toUpperCase()}</label><button className="primary" onClick={()=>save(lockDrivers||both?picked:null,keptMoves())}>Spara</button></span></div></div></div>
 }

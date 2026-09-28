@@ -1,13 +1,21 @@
 import { isoDate, monday, fmt } from "../dates.js";
 import { now } from "../clock.js";
 
-export default function DayCard({x,calc,me,onEdit,hideWeekBadge=false}){
+export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false}){
   const today=isoDate(now()); const currentStart=isoDate(monday(now())); const currentEnd=isoDate(new Date(monday(now()).getFullYear(),monday(now()).getMonth(),monday(now()).getDate()+6));
   const past=x.date<today, current=x.date>=currentStart&&x.date<=currentEnd;
   const name=n=>n===me?<span className="me-name">{n}</span>:n;
   return <section className={"day-card "+(past?"past ":"")+(current&&!hideWeekBadge?"current ":"")}>
     <div className="day-head"><div><b>{fmt(x.date)}</b><span>{x.day}</span></div>
       <div className="day-badges">{calc.result[x.date].attendanceChanged&&<em className="manual-badge" title="Närvaron har ändrats för just den här träningen">NÄRVARO ÄNDRAD</em>}{current&&!hideWeekBadge&&<em>AKTUELL VECKA</em>}</div></div>
+    {!past && onAnswer && me && (()=>{
+      const d=calc.result[x.date], open=d.unconfirmed.includes(me), coming=d.attending.includes(me);
+      return <div className={"card-answer"+(open?" open":"")}><span>{me}:</span>
+        <button className={!open&&coming?"active":""} onClick={()=>onAnswer(x.date,true)}>Kommer</button>
+        <button className={!open&&!coming?"active":""} onClick={()=>onAnswer(x.date,false)}>Kommer inte</button>
+      </div>;
+    })()}
+    {!past && calc.result[x.date].unconfirmed.length>0 && <div className="unconfirmed" title="Står på Ibland och har inte svarat för den här träningen">⚠️ Inte bekräftat: {calc.result[x.date].unconfirmed.map((k,j)=><span key={k}>{j>0&&", "}{name(k)}</span>)}</div>}
     {["dit","hem"].map(dir=>{
       const r=calc.result[x.date][dir], short=r.capacity<r.needed;
       return <div className="route" key={dir}>

@@ -17,7 +17,7 @@ export default function Onboarding({state,me,onDone,onCancel}){
   const steps=[
     {title:"Vem är du?",text:"Välj ditt barn. Det sparas bara på den här enheten.",body:
       <div className="chips big">{girls.map(g=><button key={g} className={"chip"+(child===g?" on":"")} onClick={()=>pickChild(g)}>{g}</button>)}</div>},
-    {title:`Vilka träningar brukar ${child} vara med på?`,text:"\"Ibland\" räknas inte med automatiskt – då anmäler du per träning. Allt kan ändras för en enskild träning senare.",body:
+    {title:`Vilka träningar brukar ${child} vara med på?`,text:"\"Ibland\" planeras in som att ni kommer, men du får svara inför varje träning. Allt kan ändras för en enskild träning senare.",body:
       attendance && <AttendanceField value={attendance} onChange={(day,v)=>setAttendance(a=>({...a,[day]:v}))}/>},
     {title:"Vilka träningar kan ni köra till?",text:"Markera de körningar ni normalt kan ta.",body:
       drive && <DriveField value={drive} onChange={(day,dir,v)=>setDrive(d=>({...d,[day]:{...d[day],[dir]:v}}))}/>},

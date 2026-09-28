@@ -19,7 +19,7 @@ export default function SettingsSection({state,me,onChangeMe,onConfirm,admin,set
   return <div><h2 className="section-title">Inställningar</h2>
     <div className="card me-card"><div><h3>Du är {me}s förälder</h3><p className="muted">Gäller bara den här enheten.</p></div><button className="edit-btn" onClick={onChangeMe}>Byt</button></div>
     {!state.confirmed[me] && <div className="card confirm-card"><p>Stämmer inställningarna nedan för {me}? Bekräfta så att admin ser att ni har varit inne.</p><button className="primary" onClick={onConfirm}>Inställningarna stämmer</button></div>}
-    <div className="card"><h3>Närvaro</h3><p className="muted">Vilka träningar {me} normalt är med på. "Ibland" räknas inte med automatiskt.</p>
+    <div className="card"><h3>Närvaro</h3><p className="muted">Vilka träningar {me} normalt är med på. "Ibland" planeras in, men ni får svara inför varje träning.</p>
       <AttendanceField value={state.attendance[me]} onChange={(day,v)=>setAtt(me,day,v,true)}/></div>
     <div className="card"><h3>Kan köra</h3><p className="muted">Körningar ni normalt kan ta.</p>
       <DriveField value={state.drive[me]} onChange={(day,dir,v)=>setDrive(me,day,dir,v,true)}/></div>

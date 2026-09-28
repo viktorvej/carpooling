@@ -3,7 +3,7 @@ import { isoDate, seasonDates } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { isPreview } from "./env.js";
-import { key, clampSeats, calculate, defaultAttending } from "./schedule.js";
+import { key, clampSeats, calculate, withAttendance, answerAttendance } from "./schedule.js";
 import { useAppState, useDeviceValue } from "./storage.js";
 import { useTab } from "./useTab.js";
 import Onboarding from "./components/Onboarding.jsx";
@@ -43,7 +43,7 @@ export default function App(){
   // picked: {namn: platser} för körningen, eller null för att återställa till automatisk.
   // För passerade träningar skrivs det direkt till historiken, utan automatisk påfyllning.
   // moves: {barn: förare} för manuellt flyttade barn i körningen.
-  function setTrip(date,dir,picked,attending,moves){
+  function setTrip(date,dir,picked,attending,moves,resetAttendance=false){
     setState(s=>{
       const carOverride={...s.carOverride};
       if(moves && Object.keys(moves).length) carOverride[key(date,dir)]=moves; else delete carOverride[key(date,dir)];
@@ -63,15 +63,12 @@ export default function App(){
         manual[key(date,dir)]=Object.keys(picked);
         for(const [name,seats] of Object.entries(picked)) if(seats!==s.seats[name]) seatOverride[key(date,dir,name)]=seats;
       }
-      const attendanceOverride={...s.attendanceOverride};
-      if(attending){
-        const standard=defaultAttending(s,dayNames[new Date(date+"T00:00:00").getDay()]);
-        if(attending.length===standard.length && attending.every(g=>standard.includes(g))) delete attendanceOverride[date];
-        else attendanceOverride[date]=attending;
-      }
-      return {...s,manual,seatOverride,attendanceOverride};
+      s={...s,manual,seatOverride};
+      return attending ? withAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],attending,{reset:resetAttendance}) : s;
     });
   }
+  // Förälderns svar för en träning: kommer vi eller inte?
+  function answer(date,coming){setState(s=>answerAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],me,coming))}
   // confirm: ändringen görs av föräldern själv (guiden eller Inställningar), inte av admin.
   const confirmed=(s,name,confirm)=>confirm ? {...s,confirmed:{...s.confirmed,[name]:isoDate(new Date())}} : s;
   function setSeats(name,value,confirm){setState(s=>confirmed({...s,seats:{...s.seats,[name]:clampSeats(value)}},name,confirm))}
@@ -94,8 +91,8 @@ export default function App(){
     {isPreview && !mockToday && <div className="test-banner">Testversion – ändringar här påverkar inte det riktiga schemat</div>}
     {mockToday && <div className="test-banner">Testläge: idag = {mockToday} · separat testdata · <a href="?">avsluta</a></div>}
     <main>
-      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
-      {shown==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
+      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer}/>}
+      {shown==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer}/>}
       {shown==="balance" && <BalanceSection calc={calc}/>}
       {shown==="settings" &&<SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} onConfirm={()=>setState(s=>confirmed(s,me,true))} admin={!!admin} setAdmin={setAdmin} theme={theme} setTheme={setTheme} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
       {shown==="admin" && <AdminSection state={state} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { key } from "./schedule.js";
 import { mockToday } from "./clock.js";
 import { firebaseConfig } from "./firebaseConfig.js";
-import { emptyState } from "./sync.js";
+import { emptyState, normalizeAttendanceOverride } from "./sync.js";
 import { useFirestoreState } from "./firestoreState.js";
 
 const STORAGE_KEY="carpooling-state-v1"+(mockToday?"-test":"");
@@ -11,7 +11,7 @@ const STORAGE_KEY="carpooling-state-v1"+(mockToday?"-test":"");
 //   attendance/drive/seats   familjernas normala inställningar
 //   seatOverride             {"datum|dit|namn": platser}
 //   manual                   {"datum|dit": [förare]}
-//   attendanceOverride       {datum: [namn]}, ersätter veckodagsinställningen för en kommande träning
+//   attendanceOverride       {datum: {namn: true|false}}, svar/ändringar för en kommande träning (se dayAttendance)
 //   carOverride              {"datum|dit": {barn: förare}}, manuellt flyttade barn
 //   history                  {datum: {attending, dit:{drivers}, hem:{drivers}, attendanceEdited?}}, passerade träningar
 //   confirmed                {namn: datum} när föräldern själv senast bekräftade sina inställningar
@@ -26,7 +26,7 @@ function migrate(s){
     const [date,dir]=k.split("|"); const t=key(date,dir);
     if(!(manual[t]||=[]).includes(v)) manual[t].push(v);
   }
-  return {...initial,...s,seats:{...initial.seats,...s.seats},seatOverride:s.seatOverride||{},history:s.history||{},attendanceOverride:s.attendanceOverride||{},carOverride:s.carOverride||{},confirmed:s.confirmed||{},manual};
+  return {...initial,...s,seats:{...initial.seats,...s.seats},seatOverride:s.seatOverride||{},history:s.history||{},attendanceOverride:Object.fromEntries(Object.entries(s.attendanceOverride||{}).map(([d,v])=>[d,normalizeAttendanceOverride(v)])),carOverride:s.carOverride||{},confirmed:s.confirmed||{},manual};
 }
 
 function useLocalState(){
