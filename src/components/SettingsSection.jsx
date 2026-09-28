@@ -1,10 +1,14 @@
-import { girls, trainingDays } from "../data.js";
-import { seatOptions } from "../schedule.js";
+import { AttendanceField, DriveField, SeatsField } from "./FamilyFields.jsx";
 
-export default function SettingsSection({state,setAtt,setDrive,setSeats}){
+// Man ändrar bara inställningarna för sin egen familj.
+export default function SettingsSection({state,me,onChangeMe,setAtt,setDrive,setSeats}){
   return <div><h2 className="section-title">Inställningar</h2>
-    <div className="card"><h3>Platser i bilen</h3><p className="muted">Hur många barn bilen normalt tar, inklusive det egna barnet. Kan ändras per körning via Ändra.</p>{girls.map(g=><div className="setting-row seats-row" key={g}><b>{g}</b><select value={state.seats[g]} onChange={e=>setSeats(g,e.target.value)}>{seatOptions.map(n=><option key={n} value={n}>{n}</option>)}</select></div>)}</div>
-    <div className="card"><h3>Närvaro</h3><div className="setting-row setting-head"><span/>{trainingDays.map(day=><span key={day}>{day}</span>)}</div>{girls.map(g=><div className="setting-row" key={g}><b>{g}</b>{trainingDays.map(day=><select key={day} value={state.attendance[g][day]} onChange={e=>setAtt(g,day,e.target.value)}><option>J</option><option>?</option><option>N</option></select>)}</div>)}</div>
-    <div className="card"><h3>Körbarhet</h3><div className="setting-row nested setting-head"><span/><span>Dit</span><span>Hem</span></div>{girls.map(g=><div className="setting-person" key={g}><b>{g}</b>{trainingDays.map(day=><div className="setting-row nested" key={day}><span>{day}</span><select value={state.drive[g][day].dit} onChange={e=>setDrive(g,day,"dit",e.target.value)}><option>J</option><option>N</option></select><select value={state.drive[g][day].hem} onChange={e=>setDrive(g,day,"hem",e.target.value)}><option>J</option><option>N</option></select></div>)}</div>)}</div>
+    <div className="card me-card"><div><h3>Du är {me}s förälder</h3><p className="muted">Gäller bara den här enheten.</p></div><button className="edit-btn" onClick={onChangeMe}>Byt</button></div>
+    <div className="card"><h3>Närvaro</h3><p className="muted">Vilka träningar {me} normalt är med på. "Ibland" räknas inte med automatiskt.</p>
+      <AttendanceField value={state.attendance[me]} onChange={(day,v)=>setAtt(me,day,v)}/></div>
+    <div className="card"><h3>Kan köra</h3><p className="muted">Körningar ni normalt kan ta.</p>
+      <DriveField value={state.drive[me]} onChange={(day,dir,v)=>setDrive(me,day,dir,v)}/></div>
+    <div className="card"><h3>Platser i bilen</h3><p className="muted">Hur många barn bilen normalt tar, inklusive {me}. Kan ändras per körning via Ändra.</p>
+      <SeatsField value={state.seats[me]} onChange={n=>setSeats(me,n)}/></div>
   </div>
 }

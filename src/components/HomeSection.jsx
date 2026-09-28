@@ -1,5 +1,50 @@
+import { isoDate, fmt } from "../dates.js";
+import { now } from "../clock.js";
 import DayCard from "./DayCard.jsx";
 
-export default function HomeSection({weeks,calc,onEdit}){
-  return <div><div className="hero"><h2>Vem kör?</h2><p>Tryck <b>Ändra</b> när någon vill ta över en körning.</p></div>{weeks.map(([title,dates])=><div key={title}><h2 className="section-title">{title}</h2>{dates.map(x=><DayCard key={x.date} x={x} calc={calc} onEdit={onEdit}/>)}</div>)}</div>
+const dirLabel={dit:"🚗 Dit",hem:"🏠 Hem"};
+
+function whenLabel(date,today){
+  const days=Math.round((new Date(date+"T00:00:00")-new Date(today+"T00:00:00"))/864e5);
+  return days===0?"Idag":days===1?"Imorgon":`Om ${days} dagar`;
+}
+const list=names=>names.length<2?names.join(""):names.slice(0,-1).join(", ")+" och "+names.at(-1);
+
+// Vad gäller för min familj åt ett håll: kör jag, och vem ska med? Annars: vem åker mitt barn med?
+function myTrip(r,me){
+  const own=r.cars.find(c=>c.name===me);
+  if(own){
+    const others=own.kids.filter(k=>k!==me);
+    return {drive:true,text:<>Du kör{others.length?<> – ta med <b>{list(others)}</b></>:" – inga fler barn"}</>};
+  }
+  const car=r.cars.find(c=>c.kids.includes(me));
+  if(car) return {text:<>{me} åker med <b>{car.name}</b></>};
+  return {warn:true,text:<>{me} har ingen plats än</>};
+}
+
+export default function HomeSection({season,calc,me,onEdit}){
+  const today=isoDate(now());
+  const upcoming=season.filter(x=>x.date>=today);
+  const next=upcoming[0];
+  if(!next) return <div className="hero"><h2>Säsongen är slut</h2><p>Det finns inga fler träningar inlagda.</p></div>;
+  const day=calc.result[next.date];
+  const attending=day.attending.includes(me);
+  const myDrives=upcoming.slice(1).flatMap(x=>["dit","hem"].filter(dir=>calc.result[x.date][dir].drivers.some(d=>d.name===me)).map(dir=>({...x,dir}))).slice(0,5);
+
+  return <div>
+    <div className="my-summary">
+      <div className="my-when">{whenLabel(next.date,today)} · {fmt(next.date)}</div>
+      {["dit","hem"].map(dir=>{
+        const t=myTrip(day[dir],me);
+        if(!attending && !t.drive) return null;
+        return <div className={"my-line"+(t.drive?" drive":"")+(t.warn?" warn":"")} key={dir}><span>{dirLabel[dir]}</span><div>{t.text}</div></div>;
+      })}
+      {!attending && <div className="my-line muted-line"><span>ℹ️</span><div>{me} är inte anmäld till den här träningen. Tryck <b>Ändra</b> om det inte stämmer.</div></div>}
+    </div>
+    <DayCard x={next} calc={calc} me={me} onEdit={onEdit} hideWeekBadge/>
+    <h2 className="section-title">Dina kommande körningar</h2>
+    {myDrives.length
+      ? <div className="card my-drives">{myDrives.map(x=><div key={x.date+x.dir}><span>{fmt(x.date)}</span><b>{dirLabel[x.dir]}</b></div>)}</div>
+      : <div className="card muted">Du har inga fler körningar inplanerade just nu.</div>}
+  </div>
 }
