@@ -3,7 +3,7 @@ import { key, DEFAULT_SEATS } from "./schedule.js";
 
 // Översätter mellan appens state och databasens dokument, så att varje ändring bara
 // skriver de dokument som berörs:
-//   families/{namn}      {attendance, drive, seats}
+//   families/{namn}      {attendance, drive, seats, confirmedAt?}
 //   days/{datum}         {attendanceOverride?, history?}
 //   trips/{datum|dit}    {manual?, seatOverride?: {namn: platser}, carOverride?: {barn: förare}}
 export const collections=["families","days","trips"];
@@ -14,12 +14,17 @@ export function emptyState(){
     drive: driveDefaults,
     seats: Object.fromEntries(girls.map(g=>[g,DEFAULT_SEATS])),
     seatOverride: {}, manual: {}, attendanceOverride: {}, carOverride: {}, history: {},
+    // {namn: datum} när föräldern själv senast bekräftade familjens inställningar.
+    confirmed: {},
   };
 }
 
 export function toDocs(state){
   const docs={families:{},days:{},trips:{}};
-  for(const g of girls) docs.families[g]={attendance:state.attendance[g],drive:state.drive[g],seats:state.seats[g]};
+  for(const g of girls){
+    docs.families[g]={attendance:state.attendance[g],drive:state.drive[g],seats:state.seats[g]};
+    if(state.confirmed[g]) docs.families[g].confirmedAt=state.confirmed[g];
+  }
   const day=d=>docs.days[d]??={};
   for(const [d,v] of Object.entries(state.attendanceOverride)) day(d).attendanceOverride=v;
   for(const [d,v] of Object.entries(state.history)) day(d).history=v;
@@ -39,6 +44,7 @@ export function fromDocs(docs){
   for(const [g,f] of Object.entries(docs.families||{})){
     if(!girls.includes(g)) continue;
     s.attendance={...s.attendance,[g]:f.attendance}; s.drive={...s.drive,[g]:f.drive}; s.seats={...s.seats,[g]:f.seats};
+    if(f.confirmedAt) s.confirmed[g]=f.confirmedAt;
   }
   for(const [d,v] of Object.entries(docs.days||{})){
     if(v.attendanceOverride) s.attendanceOverride[d]=v.attendanceOverride;

@@ -46,6 +46,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .admin-table select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--surface);font-size:14px}
 .toggle .switch::after{background:#fff}input,select{color:inherit;background:var(--surface)}
 .moved{color:var(--warn);font-weight:600;text-decoration:underline dotted;text-underline-offset:3px}.moved .me-name{box-shadow:0 0 0 2px var(--warn-border)}
+.family-status{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:2px;white-space:nowrap}.family-status.ok{color:var(--ok)}
+.admin-status{border-left:4px solid var(--warn-border)}.admin-status.all-done{border-left-color:var(--ok-border)}.admin-status p{margin:4px 0 0}
+.confirm-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--warn-soft);border-color:var(--warn-border)}.confirm-card p{margin:0;flex:1 1 220px;font-size:14px}
 .loading{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px}
 .loading-error{color:var(--danger);max-width:420px;text-align:center;padding:0 16px}
 .error-banner{background:var(--danger-soft);color:var(--danger);border-bottom:1px solid var(--danger-border);text-align:center;font-size:12px;font-weight:600;padding:6px 12px}

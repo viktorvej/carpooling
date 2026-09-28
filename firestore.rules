@@ -7,7 +7,7 @@ service cloud.firestore {
     match /teams/{team}/families/{name} {
       allow read: if true;
       allow write: if request.resource == null
-        || (request.resource.data.keys().hasOnly(['attendance', 'drive', 'seats'])
+        || (request.resource.data.keys().hasOnly(['attendance', 'drive', 'seats', 'confirmedAt'])
             && request.resource.data.seats is int
             && request.resource.data.seats >= 1 && request.resource.data.seats <= 6);
     }
