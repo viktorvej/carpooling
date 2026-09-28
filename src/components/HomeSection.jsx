@@ -23,7 +23,7 @@ function myTrip(r,me){
   return {warn:true,text:<>⚠️ {me} har ingen plats än</>};
 }
 
-export default function HomeSection({season,calc,me,onEdit,onAnswer}){
+export default function HomeSection({season,calc,me,onEdit,onAnswer,onDrive}){
   const today=isoDate(now());
   const upcoming=season.filter(x=>x.date>=today);
   const next=upcoming[0];
@@ -43,15 +43,31 @@ export default function HomeSection({season,calc,me,onEdit,onAnswer}){
         </div>
       </div>
       {["dit","hem"].map(dir=>{
-        const t=myTrip(day[dir],me);
-        if(!attending && !t.drive) return null;
-        return <div className={"my-line"+(t.drive?" drive":"")+(t.warn?" warn":"")} key={dir}><span>{dirLabel[dir]}</span><div>{t.text}</div></div>;
+        const r=day[dir], t=myTrip(r,me), driver=r.drivers.find(d=>d.name===me), declined=r.declined.includes(me);
+        if(!attending && !t.drive && !declined) return null;
+        return <div className={"my-line"+(t.drive?" drive":"")+(t.warn?" warn":"")} key={dir}><span>{dirLabel[dir]}</span><div>
+          {t.text}
+          {driver && (driver.confirmed
+            ? <div className="drive-answer done">✓ Du har bekräftat körningen <button className="link" onClick={()=>onDrive(next.date,dir,"no")}>Kan inte köra ändå</button></div>
+            : <div className="drive-prompt">
+                <div><b>❓ Kan du köra {dir}?</b><span>Bekräfta så att de andra ser att körningen är klar.</span></div>
+                <div className="my-answers"><button className="cta" onClick={()=>onDrive(next.date,dir,"yes")}>Ja, jag kör</button><button onClick={()=>onDrive(next.date,dir,"no")}>Kan inte köra</button></div>
+              </div>)}
+          {declined && <div className="drive-answer done">Du har sagt att du inte kan köra <button className="link" onClick={()=>onDrive(next.date,dir,null)}>Ångra</button></div>}
+        </div></div>;
       })}
     </div>
     <DayCard x={next} calc={calc} me={me} onEdit={onEdit} hideWeekBadge/>
     <h2 className="section-title">Dina kommande körningar</h2>
+    {myDrives.some(x=>!calc.result[x.date][x.dir].drivers.find(d=>d.name===me)?.confirmed) && <p className="muted">Tryck <b>Bekräfta</b> när du vet att du kan köra, så låses körningen till dig.</p>}
     {myDrives.length
-      ? <div className="card my-drives">{myDrives.map(x=><div key={x.date+x.dir}><span>{fmt(x.date)}{calc.result[x.date].unconfirmed.includes(me)&&<small className="not-confirmed"> · ej bekräftat</small>}</span><b>{dirLabel[x.dir]}</b></div>)}</div>
+      ? <div className="card my-drives">{myDrives.map(x=>{
+          const confirmedDrive=calc.result[x.date][x.dir].drivers.find(d=>d.name===me)?.confirmed;
+          return <div key={x.date+x.dir}>
+            <span>{fmt(x.date)} <b>{dirLabel[x.dir]}</b>{calc.result[x.date].unconfirmed.includes(me)&&<small className="not-confirmed"> · närvaro ej bekräftad</small>}</span>
+            {confirmedDrive ? <span className="drive-ok">✓ Bekräftad</span> : <button className="small-confirm" onClick={()=>onDrive(x.date,x.dir,"yes")}>Bekräfta</button>}
+          </div>;
+        })}</div>
       : <div className="card muted">Du har inga fler körningar inplanerade just nu.</div>}
   </div>
 }

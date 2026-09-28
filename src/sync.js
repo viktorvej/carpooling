@@ -5,7 +5,7 @@ import { key, DEFAULT_SEATS } from "./schedule.js";
 // skriver de dokument som berörs:
 //   families/{namn}      {attendance, drive, seats, confirmedAt?}
 //   days/{datum}         {attendanceOverride?: {barn: true|false}, history?}
-//   trips/{datum|dit}    {manual?, seatOverride?: {namn: platser}, carOverride?: {barn: förare}}
+//   trips/{datum|dit}    {manual?, seatOverride?: {namn: platser}, carOverride?: {barn: förare}, confirmed?, declined?}
 export const collections=["families","days","trips"];
 
 export function emptyState(){
@@ -16,6 +16,8 @@ export function emptyState(){
     seatOverride: {}, manual: {}, attendanceOverride: {}, carOverride: {}, history: {},
     // {namn: datum} när föräldern själv senast bekräftade familjens inställningar.
     confirmed: {},
+    // {"datum|dit": [förare]} som svarat "Jag kör" respektive "Kan inte köra".
+    driverConfirmed: {}, declined: {},
   };
 }
 
@@ -36,6 +38,8 @@ export function toDocs(state){
   const trip=t=>docs.trips[t]??={};
   for(const [t,v] of Object.entries(state.manual)) trip(t).manual=v;
   for(const [t,v] of Object.entries(state.carOverride)) trip(t).carOverride=v;
+  for(const [t,v] of Object.entries(state.driverConfirmed)) trip(t).confirmed=v;
+  for(const [t,v] of Object.entries(state.declined)) trip(t).declined=v;
   for(const [k,v] of Object.entries(state.seatOverride)){
     const [date,dir,name]=k.split("|");
     (trip(key(date,dir)).seatOverride??={})[name]=v;
@@ -58,6 +62,8 @@ export function fromDocs(docs){
   for(const [t,v] of Object.entries(docs.trips||{})){
     if(v.manual) s.manual[t]=v.manual;
     if(v.carOverride) s.carOverride[t]=v.carOverride;
+    if(v.confirmed) s.driverConfirmed[t]=v.confirmed;
+    if(v.declined) s.declined[t]=v.declined;
     for(const [name,seats] of Object.entries(v.seatOverride||{})) s.seatOverride[key(t,name)]=seats;
   }
   return s;

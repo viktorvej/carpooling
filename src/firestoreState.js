@@ -25,16 +25,19 @@ function getDb(){
 export function useFirestoreState(){
   const [docs,setDocs]=useState({});
   const [synced,setSynced]=useState({});
-  const [error,setError]=useState(null);
+  // Läs- och skrivfel hålls isär: en nekad skrivning ger en ny snapshot (ändringen backas), och den
+  // får inte sudda ut skrivfelet innan användaren hunnit se det.
+  const [readError,setReadError]=useState(null);
+  const [writeError,setWriteError]=useState(null);
 
   useEffect(()=>{
     const unsubs=collections.map(col=>onSnapshot(collection(getDb(),"teams",teamId,col),{includeMetadataChanges:true},
       snap=>{
         setDocs(d=>({...d,[col]:Object.fromEntries(snap.docs.map(x=>[x.id,x.data()]))}));
         if(!snap.metadata.fromCache) setSynced(s=>s[col]?s:{...s,[col]:true});
-        setError(null);
+        setReadError(null);
       },
-      err=>setError(err.message)));
+      err=>setReadError("Kunde inte hämta från databasen ("+err.message+")")));
     return ()=>unsubs.forEach(u=>u());
   },[]);
 
@@ -54,10 +57,10 @@ export function useFirestoreState(){
       const ref=doc(getDb(),"teams",teamId,o.col,o.id);
       if(o.op==="set") batch.set(ref,o.data); else batch.delete(ref);
     }
-    batch.commit().catch(err=>setError(err.message));
+    batch.commit().then(()=>setWriteError(null),err=>setWriteError("Ändringen kunde inte sparas ("+err.message+")"));
   },[]);
 
   const ready=collections.every(c=>docs[c]);
   const canFreeze=collections.every(c=>synced[c]);
-  return [state,setState,{ready,canFreeze,error}];
+  return [state,setState,{ready,canFreeze,error:writeError||readError}];
 }

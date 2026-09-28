@@ -3,7 +3,7 @@ import { isoDate, seasonDates } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { isPreview } from "./env.js";
-import { key, clampSeats, calculate, withAttendance, answerAttendance } from "./schedule.js";
+import { key, clampSeats, calculate, withAttendance, answerAttendance, answerDrive } from "./schedule.js";
 import { useAppState, useDeviceValue } from "./storage.js";
 import { useTab } from "./useTab.js";
 import Onboarding from "./components/Onboarding.jsx";
@@ -64,9 +64,17 @@ export default function App(){
         for(const [name,seats] of Object.entries(picked)) if(seats!==s.seats[name]) seatOverride[key(date,dir,name)]=seats;
       }
       s={...s,manual,seatOverride};
+      // Valda förare i Ändra gäller: en borttagen förare tappar sin bekräftelse, och en som valts
+      // trots "Kan inte köra" räknas inte längre som avböjd.
+      if(picked){
+        const trip=key(date,dir), keep=(obj,f)=>{const list=(obj[trip]||[]).filter(f), o={...obj}; if(list.length) o[trip]=list; else delete o[trip]; return o;};
+        s={...s,driverConfirmed:keep(s.driverConfirmed,n=>n in picked),declined:keep(s.declined,n=>!(n in picked))};
+      }
       return attending ? withAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],attending,{reset:resetAttendance}) : s;
     });
   }
+  // Förarens svar för en körning: "yes" (Jag kör), "no" (Kan inte köra) eller null (ångra).
+  function answerTrip(date,dir,ans){setState(s=>answerDrive(s,date,dir,me,ans))}
   // Förälderns svar för en träning: kommer vi eller inte?
   function answer(date,coming){setState(s=>answerAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],me,coming))}
   // confirm: ändringen görs av föräldern själv (guiden eller Inställningar), inte av admin.
@@ -79,7 +87,7 @@ export default function App(){
     setMe(name); setOnboarding(false);
   }
 
-  if(!status.ready) return <div className="loading">{status.error ? <p className="loading-error">Kunde inte hämta körschemat: {status.error}</p> : "Hämtar körschemat…"}</div>;
+  if(!status.ready) return <div className="loading">{status.error ? <p className="loading-error">{status.error}</p> : "Hämtar körschemat…"}</div>;
   if(!me || onboarding) return <Onboarding state={state} me={me} onDone={setFamily} onCancel={me?()=>setOnboarding(false):null}/>;
 
   // /admin utan upplåst admin-läge visar översikten.
@@ -87,15 +95,15 @@ export default function App(){
 
   return <div className="app">
     <header><div className="header-inner"><h1>🤾 Handboll – Samåkning</h1><p>Gemensamt körschema för laget</p></div></header>
-    {status.error && <div className="error-banner">Kunde inte spara eller hämta från databasen: {status.error}</div>}
+    {status.error && <div className="error-banner">{status.error}</div>}
     {isPreview && !mockToday && <div className="test-banner">Testversion – ändringar här påverkar inte det riktiga schemat</div>}
     {mockToday && <div className="test-banner">Testläge: idag = {mockToday} · separat testdata · <a href="?">avsluta</a></div>}
     <main>
-      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer}/>}
+      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer} onDrive={answerTrip}/>}
       {shown==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer}/>}
       {shown==="balance" && <BalanceSection calc={calc}/>}
       {shown==="settings" &&<SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} onConfirm={()=>setState(s=>confirmed(s,me,true))} admin={!!admin} setAdmin={setAdmin} theme={theme} setTheme={setTheme} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
-      {shown==="admin" && <AdminSection state={state} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
+      {shown==="admin" && <AdminSection state={state} calc={calc} season={season} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
     </main>
     <nav>{[
       ["home","🏠","Översikt"],["schedule","🚗","Körschema"],["balance","⚖️","Körsaldo"],["settings","⚙️","Inställningar"],

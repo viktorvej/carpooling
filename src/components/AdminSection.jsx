@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { girls, trainingDays } from "../data.js";
 import { seatOptions } from "../schedule.js";
+import { isoDate } from "../dates.js";
+import { now } from "../clock.js";
+import UnconfirmedDrives from "./UnconfirmedDrives.jsx";
 
 const views=[["attendance","Närvaro"],["drive","Kör"],["seats","Platser"]];
 const nextAttendance={J:"?","?":"N",N:"J"};
@@ -10,10 +13,11 @@ const short=day=>day.slice(0,3);
 // Alla familjers normala inställningar i kompakta tabeller. Tryck i en cell för att ändra.
 const confirmedLabel=date=>new Date(date+"T00:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short"});
 
-export default function AdminSection({state,setAtt,setDrive,setSeats}){
+export default function AdminSection({state,calc,season,setAtt,setDrive,setSeats}){
   const [view,setView]=useState("attendance");
   const done=girls.filter(g=>state.confirmed[g]);
   return <div><h2 className="section-title">Admin</h2>
+    <UnconfirmedDrives calc={calc} season={season} today={isoDate(now())}/>
     <div className={"card admin-status"+(done.length===girls.length?" all-done":"")}>
       <b>{done.length} av {girls.length} familjer har fyllt i sina inställningar</b>
       {done.length<girls.length && <p className="muted">Inte ifyllt: {girls.filter(g=>!state.confirmed[g]).join(", ")}. De har fortfarande standardinställningarna, om inte admin ändrat dem.</p>}

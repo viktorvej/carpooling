@@ -81,6 +81,20 @@ export function assignCars(drivers, attending, overrides={}){
   return {cars,unplaced:attending.filter(k=>!carOf(k)),moved};
 }
 
+// Förarens svar för en körning: "Jag kör" (bekräftar och låser) eller "Kan inte köra" (släpper körningen).
+// Ett nytt svar ersätter det tidigare; answer=null tar bort svaret.
+export function answerDrive(state,date,dir,name,answer){
+  const trip=key(date,dir);
+  const without=(list,n)=>(list||[]).filter(x=>x!==n);
+  const setList=(obj,list)=>{const o={...obj}; if(list.length) o[trip]=list; else delete o[trip]; return o;};
+  const confirmed=without(state.driverConfirmed[trip],name), declined=without(state.declined[trip],name);
+  if(answer==="yes") confirmed.push(name);
+  if(answer==="no") declined.push(name);
+  // Den som inte kan köra ska inte heller ligga kvar som manuell förare.
+  const manual=answer==="no" ? setList(state.manual,without(state.manual[trip],name)) : state.manual;
+  return {...state,manual,driverConfirmed:setList(state.driverConfirmed,confirmed),declined:setList(state.declined,declined)};
+}
+
 // Hur mycket obalans mellan dit- och hemkörningar väger mot det totala körsaldot.
 // 0.5 ger jämn fördelning utan att försämra rättvisan i antal körningar (testat över en hel säsong).
 export const DIR_BALANCE_WEIGHT=0.5;
@@ -106,14 +120,18 @@ export function calculate(state, dates, today, dirWeight=DIR_BALANCE_WEIGHT){
     for(const dir of ["dit","hem"]){
       let drivers;
       const other=dir==="dit"?"hem":"dit";
+      const trip=key(x.date,dir);
+      // Förare som bekräftat ("Jag kör") låses som manuella; de som sagt "Kan inte köra" väljs inte automatiskt.
+      const declined=state.declined[trip]||[], confirmed=state.driverConfirmed[trip]||[];
       if(frozen){
         drivers=frozen[dir].drivers;
         for(const d of drivers){drives[d.name]++; dirDrives[d.name][dir]++;}
       }else{
-        const eligible=attending.filter(g=>state.drive[g][x.day][dir]==="J");
+        const eligible=attending.filter(g=>state.drive[g][x.day][dir]==="J" && !declined.includes(g));
         drivers=[]; let capacity=0;
-        const add=(name,manual)=>{const seats=seatsFor(state,x.date,dir,name); drivers.push({name,seats,manual}); capacity+=seats; drives[name]++; dirDrives[name][dir]++;};
-        for(const g of state.manual[key(x.date,dir)]||[]) add(g,true);
+        const add=(name,manual)=>{const seats=seatsFor(state,x.date,dir,name); drivers.push({name,seats,manual,confirmed:confirmed.includes(name)}); capacity+=seats; drives[name]++; dirDrives[name][dir]++;};
+        for(const g of state.manual[trip]||[]) if(!declined.includes(g)) add(g,true);
+        for(const g of confirmed) if(!drivers.some(d=>d.name===g) && !declined.includes(g)) add(g,false);
         // Turordning: minst körningar per deltagen träning först. Den som redan kört fler åt det här
         // hållet än åt andra hållet (och kan köra båda) får lägre prioritet, så att dit/hem fördelas jämnt.
         const score=g=>{
@@ -132,11 +150,11 @@ export function calculate(state, dates, today, dirWeight=DIR_BALANCE_WEIGHT){
         // Baklänges, så att de som stod först i tur behåller sin körning om det går.
         for(let i=drivers.length-1;i>=0;i--){
           const d=drivers[i];
-          if(!d.manual && capacity-d.seats>=needed){drivers.splice(i,1); capacity-=d.seats; drives[d.name]--; dirDrives[d.name][dir]--;}
+          if(!d.manual && !d.confirmed && capacity-d.seats>=needed){drivers.splice(i,1); capacity-=d.seats; drives[d.name]--; dirDrives[d.name][dir]--;}
         }
       }
       const capacity=drivers.reduce((a,d)=>a+d.seats,0);
-      result[x.date][dir]={drivers,needed,capacity,...assignCars(drivers,attending,state.carOverride[key(x.date,dir)])};
+      result[x.date][dir]={drivers,needed,capacity,declined,...assignCars(drivers,attending,state.carOverride[key(x.date,dir)])};
     }
   }
   soFar??={drives:{...drives},attends:{...attends}};

@@ -5,6 +5,8 @@ export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false})
   const today=isoDate(now()); const currentStart=isoDate(monday(now())); const currentEnd=isoDate(new Date(monday(now()).getFullYear(),monday(now()).getMonth(),monday(now()).getDate()+6));
   const past=x.date<today, current=x.date>=currentStart&&x.date<=currentEnd;
   const name=n=>n===me?<span className="me-name">{n}</span>:n;
+  // Obekräftade förare markeras först när träningen är inom en vecka, så att det inte blir brus.
+  const soon=!past && (new Date(x.date+"T00:00:00")-new Date(today+"T00:00:00"))/864e5<=7;
   return <section className={"day-card "+(past?"past ":"")+(current&&!hideWeekBadge?"current ":"")}>
     <div className="day-head"><div><b>{fmt(x.date)}</b><span>{x.day}</span></div>
       <div className="day-badges">{calc.result[x.date].attendanceChanged&&<em className="manual-badge" title="Närvaron har ändrats för just den här träningen">NÄRVARO ÄNDRAD</em>}{current&&!hideWeekBadge&&<em>AKTUELL VECKA</em>}</div></div>
@@ -22,7 +24,7 @@ export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false})
         <div className="route-label">{dir==="dit"?"🚗 DIT":"🏠 HEM"}</div>
         <div>
           {r.drivers.length ? r.drivers.map((d,i)=><div className="driver-car" key={d.name}>
-            <span className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(d.name)}</b><small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.manual&&<small>MANUELL</small>}</span>
+            <span className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(d.name)}</b>{d.confirmed&&<span className="driver-ok" title="Föraren har bekräftat körningen">✓</span>}{!d.confirmed&&soon&&<small className="unconfirmed-driver" title="Föraren har inte bekräftat körningen">EJ BEKRÄFTAD</small>}<small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.manual&&<small>MANUELL</small>}</span>
             {(()=>{const others=r.cars[i].kids.filter(k=>k!==d.name); return others.length>0 && <span className="car-kids">med {others.map((k,j)=><span key={k}>{j>0&&", "}{r.moved.includes(k)?<span className="moved" title="Manuellt flyttad">{name(k)}</span>:name(k)}</span>)}</span>;})()}
           </div>) : <div className="driver-car">—</div>}
           {r.unplaced.length>0 && <div className="driver-car unplaced">Utan plats: {r.unplaced.join(", ")}</div>}

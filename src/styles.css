@@ -62,4 +62,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .card-answer{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12px;color:var(--muted)}.card-answer span{font-weight:600;margin-right:2px}
 .card-answer button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}.card-answer button.active{background:var(--yes);border-color:var(--yes);color:#fff}.card-answer button:last-child.active{background:var(--no);border-color:var(--no)}
 .card-answer.open button{border-color:var(--warn-border);color:var(--warn)}
+.drive-answer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:400}
+.drive-answer button{border:0;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #ffffff80}.drive-answer button.yes{background:#fff;color:var(--brand);box-shadow:none}
+.drive-prompt{background:#ffffff26;border-radius:10px;padding:10px 12px;margin-top:8px;font-weight:400}.drive-prompt b{display:block;font-size:15px}.drive-prompt span{display:block;font-size:13px;opacity:.9;margin:2px 0 8px}
+.my-answers button.cta{background:#fff;color:var(--brand);box-shadow:none}
+.drive-answer.done{opacity:.9}.drive-answer button.link{background:none;box-shadow:none;padding:0;font-weight:600;text-decoration:underline;opacity:.85}
+.driver-ok{color:var(--yes);font-weight:800;font-size:14px}.unconfirmed-driver{background:var(--neutral)!important;color:var(--muted)!important;font-size:8px!important;letter-spacing:.02em}
+.drive-ok{color:var(--ok);font-weight:700;font-size:13px}.small-confirm{border:1px solid var(--brand-border);background:var(--brand-soft);color:var(--brand-ink);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700}
 .not-confirmed{color:var(--warn);font-weight:600}
