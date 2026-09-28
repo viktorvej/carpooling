@@ -75,4 +75,5 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .kid-ok{color:#b9f6ca;font-weight:800}.kid-unanswered{font-weight:400;opacity:.8;font-size:13px}
 .week-answers>div{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--divider);font-size:14px}.week-answers .card-answer{margin:0}
 .confirm-all{width:100%;margin-top:10px}.week-answers>p{margin:8px 0 0;font-size:12px}
+.route-label span{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-top:2px}
 .not-confirmed{color:var(--warn);font-weight:600}

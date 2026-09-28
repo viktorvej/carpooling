@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { isoDate, seasonDates } from "./dates.js";
+import { isoDate, seasonDates, isDone } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { isPreview } from "./env.js";
@@ -28,17 +28,22 @@ export default function App(){
     if(theme) document.documentElement.dataset.theme=theme; else delete document.documentElement.dataset.theme;
   },[theme]);
   const season=useMemo(seasonDates,[]);
-  const todayIso=isoDate(now());
-  const calc=useMemo(()=>calculate(state,season,todayIso),[state,season,todayIso]);
+  // Klockan tickar varje minut så att en träning flyttas till historiken även om appen står öppen.
+  // Beräkningen görs bara om när datumet eller antalet genomförda träningar ändras.
+  const [,setTick]=useState(0);
+  useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60e3); return ()=>clearInterval(id);},[]);
+  const current=now(), todayIso=isoDate(current);
+  const doneCount=season.filter(x=>isDone(x,current)).length;
+  const calc=useMemo(()=>calculate(state,season,now()),[state,season,todayIso,doneCount]);
 
-  // Frys passerade träningar så att senare ändringar i inställningarna inte skriver om historiken.
+  // Frys genomförda träningar så att senare ändringar i inställningarna inte skriver om historiken.
   useEffect(()=>{
     if(!status.canFreeze) return;
-    const toFreeze=season.filter(x=>x.date<todayIso && !state.history[x.date]);
+    const toFreeze=season.filter(x=>calc.result[x.date].done && !state.history[x.date]);
     if(!toFreeze.length) return;
     const frozen=Object.fromEntries(toFreeze.map(x=>{const r=calc.result[x.date]; return [x.date,{attending:r.attending,dit:{drivers:r.dit.drivers},hem:{drivers:r.hem.drivers}}]}));
     setState(s=>({...s,history:{...frozen,...s.history}}));
-  },[calc,season,todayIso,state.history,setState,status.canFreeze]);
+  },[calc,season,state.history,setState,status.canFreeze]);
 
   // picked: {namn: platser} för körningen, eller null för att återställa till automatisk.
   // För passerade träningar skrivs det direkt till historiken, utan automatisk påfyllning.

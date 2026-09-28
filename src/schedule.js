@@ -1,4 +1,5 @@
 import { girls } from "./data.js";
+import { isoDate, isDone } from "./dates.js";
 
 export function key(...parts){return parts.join("|")}
 
@@ -111,27 +112,29 @@ export function answerDrive(state,date,dir,name,answer){
 // 0.5 ger jämn fördelning utan att försämra rättvisan i antal körningar (testat över en hel säsong).
 export const DIR_BALANCE_WEIGHT=0.5;
 
-// today (ISO-datum): träningar före detta datum räknas som genomförda i "soFar".
-export function calculate(state, dates, today, dirWeight=DIR_BALANCE_WEIGHT){
+// now (Date): träningar som är genomförda (isDone) räknas in i "soFar" och används från historiken.
+export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
+  const today=isoDate(now);
   const drives=Object.fromEntries(girls.map(g=>[g,0]));
   const dirDrives=Object.fromEntries(girls.map(g=>[g,{dit:0,hem:0}]));
   const attends=Object.fromEntries(girls.map(g=>[g,0]));
   const result={};
   let soFar=null;
   for(const x of dates){
-    if(!soFar && x.date>=today) soFar={drives:{...drives},attends:{...attends}};
-    // Frysta (passerade) träningar räknas från historiken, inte från nuvarande inställningar.
-    // (Bara före idag, så att testläget med ett tidigare ?idag-datum inte låser "framtida" träningar.)
-    const frozen=x.date<today && state.history[x.date];
+    const done=isDone(x,now);
+    if(!soFar && !done) soFar={drives:{...drives},attends:{...attends}};
+    // Frysta (genomförda) träningar räknas från historiken, inte från nuvarande inställningar.
+    // (Bara genomförda, så att testläget med ett tidigare ?idag-datum inte låser "framtida" träningar.)
+    const frozen=done && state.history[x.date];
     const planned=frozen ? null : dayAttendance(state,x.date,x.day);
     const attending=frozen ? frozen.attending : planned.attending;
     for(const g of attending) attends[g]++;
     const attendanceChanged=frozen ? !!frozen.attendanceEdited : planned.changed;
     const daysUntil=Math.round((new Date(x.date+"T00:00:00")-new Date(today+"T00:00:00"))/864e5);
-    result[x.date]={attending,frozen:!!frozen,attendanceChanged,
+    result[x.date]={attending,done,frozen:!!frozen,attendanceChanged,
       unconfirmed:frozen?[]:planned.unconfirmed, answered:frozen?{}:planned.answered, maybe:frozen?[]:planned.maybe,
       // Inom svarsfönstret: då visas påminnelser och obekräftade barn markeras.
-      soon:!frozen && daysUntil>=0 && daysUntil<=ANSWER_WINDOW_DAYS};
+      soon:!done && daysUntil>=0 && daysUntil<=ANSWER_WINDOW_DAYS};
     const needed=attending.length;
     for(const dir of ["dit","hem"]){
       let drivers;

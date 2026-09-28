@@ -1,4 +1,4 @@
-import { isoDate, fmt } from "../dates.js";
+import { isoDate, fmt, fmtTime, trainingTime } from "../dates.js";
 import { now } from "../clock.js";
 import { answerState } from "../schedule.js";
 import DayCard from "./DayCard.jsx";
@@ -34,7 +34,7 @@ function myTrip(day,r,me){
 
 export default function HomeSection({season,calc,me,onEdit,onAnswer,onAnswerMany,onDrive}){
   const today=isoDate(now());
-  const upcoming=season.filter(x=>x.date>=today);
+  const upcoming=season.filter(x=>!calc.result[x.date].done);
   const next=upcoming[0];
   if(!next) return <div className="hero"><h2>Säsongen är slut</h2><p>Det finns inga fler träningar inlagda.</p></div>;
   const day=calc.result[next.date];
@@ -48,7 +48,7 @@ export default function HomeSection({season,calc,me,onEdit,onAnswer,onAnswerMany
 
   return <div>
     <div className="my-summary">
-      <div className="my-when">{whenLabel(next.date,today)} · {fmt(next.date)}</div>
+      <div className="my-when">{whenLabel(next.date,today)} · {fmt(next.date)}{trainingTime(next.day)&&` · ${fmtTime(trainingTime(next.day).start)}–${fmtTime(trainingTime(next.day).end)}`}</div>
       <div className={"my-question"+(ask?" open":"")}>
         {ask && <div>❓ {day.maybe.includes(me)?<>{me} står på <b>Ibland</b>. Kommer ni?</>:<>Kommer {me}? Svara så att föraren vet.</>}</div>}
         <AnswerButtons day={day} me={me} className="my-answers" onAnswer={v=>onAnswer(next.date,v)}/>

@@ -27,5 +27,10 @@ export const adminPin="2015";
 
 export const dayNames={0:"Söndag",1:"Måndag",2:"Tisdag",3:"Onsdag",4:"Torsdag",5:"Fredag",6:"Lördag"};
 export const scheduledWeekdays = new Set([1,2,4]);
+export const trainingTimes = {
+  Måndag:{start:"16:30",end:"18:00"},
+  Tisdag:{start:"17:00",end:"18:30"},
+  Torsdag:{start:"16:45",end:"18:00"},
+};
 export const seasonStart = new Date(2026,8,28);
 export const seasonEnd = new Date(2027,4,31);

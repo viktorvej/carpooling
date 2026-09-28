@@ -1,4 +1,13 @@
-import { dayNames, scheduledWeekdays, seasonStart, seasonEnd } from "./data.js";
+import { dayNames, scheduledWeekdays, seasonStart, seasonEnd, trainingTimes } from "./data.js";
+
+// En träning räknas som genomförd (flyttas till historiken och fryses) en stund efter att den slutat.
+export const DONE_AFTER_MINUTES=30;
+export function trainingTime(day){return trainingTimes[day]}
+export function fmtTime(hhmm){return hhmm.replace(":",".")}
+export function isDone(x,now){
+  const end=new Date(`${x.date}T${trainingTimes[x.day]?.end ?? "23:59"}:00`);
+  return now.getTime()>=end.getTime()+DONE_AFTER_MINUTES*60e3;
+}
 
 // Lokal tid, inte toISOString() som räknar i UTC och ger föregående dag i Sverige.
 export function isoDate(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")}
