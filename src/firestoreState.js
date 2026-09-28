@@ -4,9 +4,10 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { firebaseConfig } from "./firebaseConfig.js";
 import { collections, fromDocs, diffDocs } from "./sync.js";
 import { mockToday } from "./clock.js";
+import { isDev, isPreview } from "./env.js";
 
-// Skarp data i den publicerade appen; lokal utveckling och testläget har egna lag så att de inte rör den.
-export const teamId=import.meta.env.DEV ? (mockToday ? "test" : "dev") : "main";
+// Skarp data bara på den riktiga adressen; lokal utveckling, testversionen och ?idag-läget har egna lag.
+export const teamId=mockToday ? "test" : isDev ? "dev" : isPreview ? "preview" : "main";
 
 let db=null;
 function getDb(){

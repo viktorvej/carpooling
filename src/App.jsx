@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { isoDate, seasonDates } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
+import { isPreview } from "./env.js";
 import { key, clampSeats, calculate, defaultAttending } from "./schedule.js";
 import { useAppState, useDeviceValue } from "./storage.js";
 import { useTab } from "./useTab.js";
@@ -90,6 +91,7 @@ export default function App(){
   return <div className="app">
     <header><div className="header-inner"><h1>🤾 Handboll – Samåkning</h1><p>Gemensamt körschema för laget</p></div></header>
     {status.error && <div className="error-banner">Kunde inte spara eller hämta från databasen: {status.error}</div>}
+    {isPreview && !mockToday && <div className="test-banner">Testversion – ändringar här påverkar inte det riktiga schemat</div>}
     {mockToday && <div className="test-banner">Testläge: idag = {mockToday} · separat testdata · <a href="?">avsluta</a></div>}
     <main>
       {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit}/>}

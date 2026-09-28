@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "vite build && npx firebase-tools deploy --only hosting",
+    "deploy:test": "vite build && npx firebase-tools hosting:channel:deploy test --expires 30d"
   },
   "dependencies": {
     "firebase": "^12.19.0",
