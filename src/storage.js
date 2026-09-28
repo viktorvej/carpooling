@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
-import { girls, attendanceDefaults, driveDefaults } from "./data.js";
-import { key, DEFAULT_SEATS } from "./schedule.js";
+import { key } from "./schedule.js";
 import { mockToday } from "./clock.js";
+import { firebaseConfig } from "./firebaseConfig.js";
+import { emptyState } from "./sync.js";
+import { useFirestoreState } from "./firestoreState.js";
 
 const STORAGE_KEY="carpooling-state-v1"+(mockToday?"-test":"");
 
-const initial = {
-  attendance: attendanceDefaults,
-  drive: driveDefaults,
-  seats: Object.fromEntries(girls.map(g=>[g,DEFAULT_SEATS])),
-  seatOverride: {},
-  manual: {},
-  // Närvaro för enskilda kommande träningar: {datum: [namn]}, ersätter veckodagsinställningen.
-  attendanceOverride: {},
-  // Manuellt flyttade barn: {"datum|dit": {barn: förare}}
-  carOverride: {},
-  // Passerade träningar: {datum: {attending:[namn], dit:{drivers:[{name,seats,manual}]}, hem:{...}}}
-  history: {},
-};
+// State-fält:
+//   attendance/drive/seats   familjernas normala inställningar
+//   seatOverride             {"datum|dit|namn": platser}
+//   manual                   {"datum|dit": [förare]}
+//   attendanceOverride       {datum: [namn]}, ersätter veckodagsinställningen för en kommande träning
+//   carOverride              {"datum|dit": {barn: förare}}, manuellt flyttade barn
+//   history                  {datum: {attending, dit:{drivers}, hem:{drivers}, attendanceEdited?}}, passerade träningar
+const initial=emptyState();
 
 // Äldre sparad data hade manuella förare per plats ("datum|dit|0"), nu en lista per körning ("datum|dit").
 function migrate(s){
@@ -31,7 +28,7 @@ function migrate(s){
   return {...initial,...s,seats:{...initial.seats,...s.seats},seatOverride:s.seatOverride||{},history:s.history||{},attendanceOverride:s.attendanceOverride||{},carOverride:s.carOverride||{},manual};
 }
 
-export function useStoredState(){
+function useLocalState(){
   const [state,setState]=useState(()=>{
     try{
       const raw=localStorage.getItem(STORAGE_KEY);
@@ -39,8 +36,12 @@ export function useStoredState(){
     }catch{return initial;}
   });
   useEffect(()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(state)),[state]);
-  return [state,setState];
+  return [state,setState,{ready:true,canFreeze:true,error:null}];
 }
+
+// Gemensam databas om Firebase är konfigurerat, annars bara i webbläsaren. Valet ändras aldrig
+// under körning, så det är okej att välja hook här.
+export const useAppState=firebaseConfig ? useFirestoreState : useLocalState;
 
 // Värden som bara gäller den här enheten (t.ex. vem som använder den), inte den gemensamma datan.
 export function useDeviceValue(name){

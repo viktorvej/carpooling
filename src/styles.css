@@ -46,6 +46,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .admin-table select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--surface);font-size:14px}
 .toggle .switch::after{background:#fff}input,select{color:inherit;background:var(--surface)}
 .moved{color:var(--warn);font-weight:600;text-decoration:underline dotted;text-underline-offset:3px}.moved .me-name{box-shadow:0 0 0 2px var(--warn-border)}
+.loading{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px}
+.loading-error{color:var(--danger);max-width:420px;text-align:center;padding:0 16px}
+.error-banner{background:var(--danger-soft);color:var(--danger);border-bottom:1px solid var(--danger-border);text-align:center;font-size:12px;font-weight:600;padding:6px 12px}
 .chip.on.own{background:var(--brand);border-color:var(--brand);color:#fff}
 .chip.on.off{background:var(--surface);border-color:var(--line);color:var(--muted);font-weight:400}
 .chip.moved{border-color:var(--warn-border);box-shadow:0 0 0 2px var(--warn-border)}

@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Ingen inloggning ännu: alla som har appen kan läsa och skriva lagets data.
+// Reglerna begränsar bara vilka samlingar som finns och att dokumenten ser rimliga ut.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /teams/{team}/families/{name} {
+      allow read: if true;
+      allow write: if request.resource == null
+        || (request.resource.data.keys().hasOnly(['attendance', 'drive', 'seats'])
+            && request.resource.data.seats is int
+            && request.resource.data.seats >= 1 && request.resource.data.seats <= 6);
+    }
+    match /teams/{team}/days/{date} {
+      allow read: if true;
+      allow write: if request.resource == null
+        || request.resource.data.keys().hasOnly(['attendanceOverride', 'history']);
+    }
+    match /teams/{team}/trips/{trip} {
+      allow read: if true;
+      allow write: if request.resource == null
+        || request.resource.data.keys().hasOnly(['manual', 'seatOverride', 'carOverride']);
+    }
+  }
+}

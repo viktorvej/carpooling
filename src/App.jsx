@@ -3,7 +3,7 @@ import { isoDate, seasonDates } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { key, clampSeats, calculate, defaultAttending } from "./schedule.js";
-import { useStoredState, useDeviceValue } from "./storage.js";
+import { useAppState, useDeviceValue } from "./storage.js";
 import Onboarding from "./components/Onboarding.jsx";
 import AdminSection from "./components/AdminSection.jsx";
 import HomeSection from "./components/HomeSection.jsx";
@@ -13,7 +13,7 @@ import SettingsSection from "./components/SettingsSection.jsx";
 import EditModal from "./components/EditModal.jsx";
 
 export default function App(){
-  const [state,setState]=useStoredState();
+  const [state,setState,status]=useAppState();
   const [tab,setTab]=useState("home");
   const [edit,setEdit]=useState(null);
   const [storedMe,setMe]=useDeviceValue("me");
@@ -31,11 +31,12 @@ export default function App(){
 
   // Frys passerade träningar så att senare ändringar i inställningarna inte skriver om historiken.
   useEffect(()=>{
+    if(!status.canFreeze) return;
     const toFreeze=season.filter(x=>x.date<todayIso && !state.history[x.date]);
     if(!toFreeze.length) return;
     const frozen=Object.fromEntries(toFreeze.map(x=>{const r=calc.result[x.date]; return [x.date,{attending:r.attending,dit:{drivers:r.dit.drivers},hem:{drivers:r.hem.drivers}}]}));
     setState(s=>({...s,history:{...frozen,...s.history}}));
-  },[calc,season,todayIso,state.history,setState]);
+  },[calc,season,todayIso,state.history,setState,status.canFreeze]);
 
   // picked: {namn: platser} för körningen, eller null för att återställa till automatisk.
   // För passerade träningar skrivs det direkt till historiken, utan automatisk påfyllning.
@@ -77,10 +78,12 @@ export default function App(){
     setMe(name); setOnboarding(false);
   }
 
+  if(!status.ready) return <div className="loading">{status.error ? <p className="loading-error">Kunde inte hämta körschemat: {status.error}</p> : "Hämtar körschemat…"}</div>;
   if(!me || onboarding) return <Onboarding state={state} me={me} onDone={setFamily} onCancel={me?()=>setOnboarding(false):null}/>;
 
   return <div className="app">
     <header><div className="header-inner"><h1>🤾 Handboll – Samåkning</h1><p>Gemensamt körschema för laget</p></div></header>
+    {status.error && <div className="error-banner">Kunde inte spara eller hämta från databasen: {status.error}</div>}
     {mockToday && <div className="test-banner">Testläge: idag = {mockToday} · separat testdata · <a href="?">avsluta</a></div>}
     <main>
       {tab==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
