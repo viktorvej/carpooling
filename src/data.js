@@ -22,6 +22,9 @@ Object.assign(driveDefaults,{
   Alma:{Måndag:{dit:"N",hem:"N"},Tisdag:{dit:"J",hem:"J"},Torsdag:{dit:"J",hem:"J"}},
 });
 
+// Låser upp admin-läget. Inte en säkerhetsspärr, bara för att hålla vyn undan för vanliga användare.
+export const adminPin="2015";
+
 export const dayNames={0:"Söndag",1:"Måndag",2:"Tisdag",3:"Onsdag",4:"Torsdag",5:"Fredag",6:"Lördag"};
 export const scheduledWeekdays = new Set([1,2,4]);
 export const seasonStart = new Date(2026,8,28);

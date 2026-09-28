@@ -5,6 +5,7 @@ import { now, mockToday } from "./clock.js";
 import { key, clampSeats, calculate, defaultAttending } from "./schedule.js";
 import { useStoredState, useDeviceValue } from "./storage.js";
 import Onboarding from "./components/Onboarding.jsx";
+import AdminSection from "./components/AdminSection.jsx";
 import HomeSection from "./components/HomeSection.jsx";
 import ScheduleSection from "./components/ScheduleSection.jsx";
 import BalanceSection from "./components/BalanceSection.jsx";
@@ -18,6 +19,7 @@ export default function App(){
   const [storedMe,setMe]=useDeviceValue("me");
   const me=girls.includes(storedMe)?storedMe:null;
   const [onboarding,setOnboarding]=useState(false);
+  const [admin,setAdmin]=useDeviceValue("admin");
   const season=useMemo(seasonDates,[]);
   const todayIso=isoDate(now());
   const calc=useMemo(()=>calculate(state,season,todayIso),[state,season,todayIso]);
@@ -77,10 +79,12 @@ export default function App(){
       {tab==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
       {tab==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit}/>}
       {tab==="balance" && <BalanceSection calc={calc}/>}
-      {tab==="settings" && <SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
+      {tab==="settings" && <SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} admin={!!admin} setAdmin={setAdmin} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
+      {tab==="admin" && admin && <AdminSection state={state} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}
     </main>
     <nav>{[
-      ["home","🏠","Översikt"],["schedule","🚗","Körschema"],["balance","⚖️","Körsaldo"],["settings","⚙️","Inställningar"]
+      ["home","🏠","Översikt"],["schedule","🚗","Körschema"],["balance","⚖️","Körsaldo"],["settings","⚙️","Inställningar"],
+      ...(admin?[["admin","🛠️","Admin"]]:[])
     ].map(([id,icon,label])=><button key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}><span>{icon}</span>{label}</button>)}</nav>
     {edit && <EditModal edit={edit} calc={calc} state={state} onSave={setTrip} onClose={()=>setEdit(null)}/>}
   </div>
