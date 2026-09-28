@@ -76,7 +76,9 @@ export default function App(){
   // Förarens svar för en körning: "yes" (Jag kör), "no" (Kan inte köra) eller null (ångra).
   function answerTrip(date,dir,ans){setState(s=>answerDrive(s,date,dir,me,ans))}
   // Förälderns svar för en träning: kommer vi eller inte?
-  function answer(date,coming){setState(s=>answerAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],me,coming))}
+  function answer(date,coming){setState(s=>answerAttendance(s,date,me,coming))}
+  // Svara för flera träningar på en gång: [[datum, kommer], ...]
+  function answerMany(list){setState(s=>list.reduce((acc,[date,coming])=>answerAttendance(acc,date,me,coming),s))}
   // confirm: ändringen görs av föräldern själv (guiden eller Inställningar), inte av admin.
   const confirmed=(s,name,confirm)=>confirm ? {...s,confirmed:{...s.confirmed,[name]:isoDate(new Date())}} : s;
   function setSeats(name,value,confirm){setState(s=>confirmed({...s,seats:{...s.seats,[name]:clampSeats(value)}},name,confirm))}
@@ -99,7 +101,7 @@ export default function App(){
     {isPreview && !mockToday && <div className="test-banner">Testversion – ändringar här påverkar inte det riktiga schemat</div>}
     {mockToday && <div className="test-banner">Testläge: idag = {mockToday} · separat testdata · <a href="?">avsluta</a></div>}
     <main>
-      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer} onDrive={answerTrip}/>}
+      {shown==="home" && <HomeSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer} onAnswerMany={answerMany} onDrive={answerTrip}/>}
       {shown==="schedule" && <ScheduleSection season={season} calc={calc} me={me} onEdit={setEdit} onAnswer={answer}/>}
       {shown==="balance" && <BalanceSection calc={calc}/>}
       {shown==="settings" &&<SettingsSection state={state} me={me} onChangeMe={()=>setOnboarding(true)} onConfirm={()=>setState(s=>confirmed(s,me,true))} admin={!!admin} setAdmin={setAdmin} theme={theme} setTheme={setTheme} setAtt={setAtt} setDrive={setDrive} setSeats={setSeats} />}

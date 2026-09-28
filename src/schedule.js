@@ -8,47 +8,59 @@ export function clampSeats(n){const v=Number(n); return Number.isFinite(v)?Math.
 // Platser = antal barn bilen tar, inklusive förarens eget barn.
 export function seatsFor(state,date,dir,name){return clampSeats(state.seatOverride[key(date,dir,name)] ?? state.seats[name])}
 
-// Närvaro: "J" och "?" (Ibland) planeras in, "N" inte. För en enskild träning kan
-// attendanceOverride[datum] = {barn: true|false} ange uttryckliga svar eller ändringar.
-// "Ibland"-barn utan svar räknas som obekräftade, så att appen kan påminna.
+// Närvaro per träning, i prioritetsordning:
+//   attendanceOverride[datum][barn]  ändring av någon annan via Ändra
+//   answers[datum][barn]             familjens eget svar (Kommer/Kommer inte)
+//   inställningen                    "J" och "?" (Ibland) planeras in, "N" inte
+// Barn som planeras in men varken svarat eller ändrats räknas som obekräftade. Påminnelser och
+// markeringar visas bara när träningen är inom ANSWER_WINDOW_DAYS dagar.
+export const ANSWER_WINDOW_DAYS=3;
 const planned=(state,g,day)=>state.attendance[g][day]!=="N";
 const maybe=(state,g,day)=>state.attendance[g][day]==="?";
 
 export function defaultAttending(state,day){return girls.filter(g=>planned(state,g,day))}
 
 export function dayAttendance(state,date,day){
-  const o=state.attendanceOverride[date]||{};
+  const o=state.attendanceOverride[date]||{}, a=state.answers[date]||{};
+  const attending=girls.filter(g=>o[g] ?? a[g] ?? planned(state,g,day));
   return {
-    attending:girls.filter(g=>o[g] ?? planned(state,g,day)),
-    unconfirmed:girls.filter(g=>maybe(state,g,day) && o[g]===undefined),
-    // Svar från "Ibland"-familjer är förväntade och räknas inte som ändrad närvaro.
-    changed:girls.some(g=>!maybe(state,g,day) && o[g]!==undefined && o[g]!==planned(state,g,day)),
+    attending,
+    answered:a,
+    maybe:girls.filter(g=>maybe(state,g,day)),
+    unconfirmed:attending.filter(g=>a[g]===undefined && o[g]===undefined),
+    // "Ibland"-familjer som inte kommer är ett förväntat svar och räknas inte som ändrad närvaro.
+    changed:girls.some(g=>!maybe(state,g,day) && attending.includes(g)!==planned(state,g,day)),
   };
 }
 
-// Sparar närvaron från Ändra: bara barn vars närvaro faktiskt ändrats får ett uttryckligt värde,
-// så att någon annans ändring inte räknas som ett svar från en "Ibland"-familj.
-// reset (Automatisk) tar bort ändringar men behåller svar från "Ibland"-familjer.
-export function withAttendance(state,date,day,attending,{reset=false}={}){
-  const prev=state.attendanceOverride[date]||{}, o={};
-  for(const g of girls){
-    if(prev[g]!==undefined && (!reset || maybe(state,g,day))) o[g]=prev[g];
-    if(!reset){const now=attending.includes(g); if(now!==(o[g] ?? planned(state,g,day))) o[g]=now;}
-    if(!maybe(state,g,day) && o[g]===planned(state,g,day)) delete o[g];
-  }
-  const all={...state.attendanceOverride};
-  if(Object.keys(o).length) all[date]=o; else delete all[date];
-  return {...state,attendanceOverride:all};
+// En familjs svarsläge för en träning (från calculate-resultatet): svarat, eller inställningens förslag
+// (null för "Ibland", som inte har något förslag).
+export function answerState(day,me){
+  const a=day.answered[me];
+  if(a!==undefined) return {answered:true,value:a};
+  return {answered:false,value:day.maybe.includes(me)?null:day.attending.includes(me)};
 }
 
-// Förälderns eget svar (Kommer/Kommer inte). Ett svar som stämmer med inställningen sparas inte som
-// undantag, utom för "Ibland" där själva svaret behövs för att träningen ska räknas som bekräftad.
-export function answerAttendance(state,date,day,name,coming){
-  const o={...state.attendanceOverride[date],[name]:coming};
-  if(!maybe(state,name,day) && coming===planned(state,name,day)) delete o[name];
-  const all={...state.attendanceOverride};
-  if(Object.keys(o).length) all[date]=o; else delete all[date];
-  return {...state,attendanceOverride:all};
+const setDate=(obj,date,o)=>{const all={...obj}; if(Object.keys(o).length) all[date]=o; else delete all[date]; return all;};
+
+// Sparar närvaron från Ändra som ändringar ovanpå familjernas svar; bara barn som faktiskt ändrats
+// får ett värde. reset (Automatisk) tar bort alla ändringar men rör inte familjernas svar.
+export function withAttendance(state,date,day,attending,{reset=false}={}){
+  const prev=state.attendanceOverride[date]||{}, a=state.answers[date]||{}, o={};
+  if(!reset) for(const g of girls){
+    const base=a[g] ?? planned(state,g,day);
+    const now=attending.includes(g), current=prev[g] ?? base;
+    const value=now!==current ? now : prev[g];
+    if(value!==undefined && value!==base) o[g]=value;
+  }
+  return {...state,attendanceOverride:setDate(state.attendanceOverride,date,o)};
+}
+
+// Familjens eget svar. Sparas alltid (även när det stämmer med inställningen, för det är just
+// bekräftelsen som behövs) och ersätter en eventuell ändring av någon annan för samma barn.
+export function answerAttendance(state,date,name,coming){
+  const o={...state.attendanceOverride[date]}; delete o[name];
+  return {...state,answers:{...state.answers,[date]:{...state.answers[date],[name]:coming}},attendanceOverride:setDate(state.attendanceOverride,date,o)};
 }
 
 // Placerar barnen i bilarna: förarens eget barn i egen bil (kan flyttas manuellt), resten i bilen med flest lediga platser.
@@ -115,7 +127,11 @@ export function calculate(state, dates, today, dirWeight=DIR_BALANCE_WEIGHT){
     const attending=frozen ? frozen.attending : planned.attending;
     for(const g of attending) attends[g]++;
     const attendanceChanged=frozen ? !!frozen.attendanceEdited : planned.changed;
-    result[x.date]={attending,frozen:!!frozen,attendanceChanged,unconfirmed:frozen?[]:planned.unconfirmed};
+    const daysUntil=Math.round((new Date(x.date+"T00:00:00")-new Date(today+"T00:00:00"))/864e5);
+    result[x.date]={attending,frozen:!!frozen,attendanceChanged,
+      unconfirmed:frozen?[]:planned.unconfirmed, answered:frozen?{}:planned.answered, maybe:frozen?[]:planned.maybe,
+      // Inom svarsfönstret: då visas påminnelser och obekräftade barn markeras.
+      soon:!frozen && daysUntil>=0 && daysUntil<=ANSWER_WINDOW_DAYS};
     const needed=attending.length;
     for(const dir of ["dit","hem"]){
       let drivers;

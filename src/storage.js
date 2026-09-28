@@ -11,7 +11,8 @@ const STORAGE_KEY="carpooling-state-v1"+(mockToday?"-test":"");
 //   attendance/drive/seats   familjernas normala inställningar
 //   seatOverride             {"datum|dit|namn": platser}
 //   manual                   {"datum|dit": [förare]}
-//   attendanceOverride       {datum: {namn: true|false}}, svar/ändringar för en kommande träning (se dayAttendance)
+//   attendanceOverride       {datum: {namn: true|false}}, ändringar via Ändra (se dayAttendance)
+//   answers                  {datum: {namn: true|false}}, familjernas egna svar Kommer/Kommer inte
 //   carOverride              {"datum|dit": {barn: förare}}, manuellt flyttade barn
 //   history                  {datum: {attending, dit:{drivers}, hem:{drivers}, attendanceEdited?}}, passerade träningar
 //   confirmed                {namn: datum} när föräldern själv senast bekräftade sina inställningar
@@ -27,7 +28,7 @@ function migrate(s){
     const [date,dir]=k.split("|"); const t=key(date,dir);
     if(!(manual[t]||=[]).includes(v)) manual[t].push(v);
   }
-  return {...initial,...s,seats:{...initial.seats,...s.seats},seatOverride:s.seatOverride||{},history:s.history||{},attendanceOverride:Object.fromEntries(Object.entries(s.attendanceOverride||{}).map(([d,v])=>[d,normalizeAttendanceOverride(v)])),carOverride:s.carOverride||{},confirmed:s.confirmed||{},driverConfirmed:s.driverConfirmed||{},declined:s.declined||{},manual};
+  return {...initial,...s,seats:{...initial.seats,...s.seats},seatOverride:s.seatOverride||{},history:s.history||{},attendanceOverride:Object.fromEntries(Object.entries(s.attendanceOverride||{}).map(([d,v])=>[d,normalizeAttendanceOverride(v)])),carOverride:s.carOverride||{},confirmed:s.confirmed||{},answers:s.answers||{},driverConfirmed:s.driverConfirmed||{},declined:s.declined||{},manual};
 }
 
 function useLocalState(){

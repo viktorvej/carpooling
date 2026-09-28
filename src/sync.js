@@ -1,10 +1,10 @@
-import { girls, attendanceDefaults, driveDefaults } from "./data.js";
+import { girls, attendanceDefaults, driveDefaults, dayNames } from "./data.js";
 import { key, DEFAULT_SEATS } from "./schedule.js";
 
 // Översätter mellan appens state och databasens dokument, så att varje ändring bara
 // skriver de dokument som berörs:
 //   families/{namn}      {attendance, drive, seats, confirmedAt?}
-//   days/{datum}         {attendanceOverride?: {barn: true|false}, history?}
+//   days/{datum}         {attendanceOverride?: {barn: true|false}, answers?: {barn: true|false}, history?}
 //   trips/{datum|dit}    {manual?, seatOverride?: {namn: platser}, carOverride?: {barn: förare}, confirmed?, declined?}
 export const collections=["families","days","trips"];
 
@@ -16,6 +16,8 @@ export function emptyState(){
     seatOverride: {}, manual: {}, attendanceOverride: {}, carOverride: {}, history: {},
     // {namn: datum} när föräldern själv senast bekräftade familjens inställningar.
     confirmed: {},
+    // {datum: {barn: true|false}} familjernas egna svar (Kommer/Kommer inte).
+    answers: {},
     // {"datum|dit": [förare]} som svarat "Jag kör" respektive "Kan inte köra".
     driverConfirmed: {}, declined: {},
   };
@@ -35,6 +37,7 @@ export function toDocs(state){
   const day=d=>docs.days[d]??={};
   for(const [d,v] of Object.entries(state.attendanceOverride)) day(d).attendanceOverride=v;
   for(const [d,v] of Object.entries(state.history)) day(d).history=v;
+  for(const [d,v] of Object.entries(state.answers)) day(d).answers=v;
   const trip=t=>docs.trips[t]??={};
   for(const [t,v] of Object.entries(state.manual)) trip(t).manual=v;
   for(const [t,v] of Object.entries(state.carOverride)) trip(t).carOverride=v;
@@ -56,7 +59,15 @@ export function fromDocs(docs){
     if(f.confirmedAt) s.confirmed[g]=f.confirmedAt;
   }
   for(const [d,v] of Object.entries(docs.days||{})){
-    if(v.attendanceOverride) s.attendanceOverride[d]=normalizeAttendanceOverride(v.attendanceOverride);
+    const override=v.attendanceOverride ? {...normalizeAttendanceOverride(v.attendanceOverride)} : {};
+    const answers={...v.answers};
+    // Äldre data hade "Ibland"-familjernas svar bland ändringarna; flytta dem till svaren.
+    if(!v.answers){
+      const dayName=dayNames[new Date(d+"T00:00:00").getDay()];
+      for(const g of Object.keys(override)) if(s.attendance[g]?.[dayName]==="?"){answers[g]=override[g]; delete override[g];}
+    }
+    if(Object.keys(override).length) s.attendanceOverride[d]=override;
+    if(Object.keys(answers).length) s.answers[d]=answers;
     if(v.history) s.history[d]=v.history;
   }
   for(const [t,v] of Object.entries(docs.trips||{})){

@@ -14,7 +14,7 @@ service cloud.firestore {
     match /teams/{team}/days/{date} {
       allow read: if true;
       allow write: if request.resource == null
-        || request.resource.data.keys().hasOnly(['attendanceOverride', 'history']);
+        || request.resource.data.keys().hasOnly(['attendanceOverride', 'answers', 'history']);
     }
     match /teams/{team}/trips/{trip} {
       allow read: if true;
