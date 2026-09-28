@@ -65,15 +65,19 @@ export function assignCars(drivers, attending, overrides={}){
     const c=cars.filter(hasRoom).sort((a,b)=>(b.seats-b.kids.length)-(a.seats-a.kids.length))[0];
     if(c) c.kids.push(kid);
   }
-  const moved=[];
-  for(const [kid,target] of Object.entries(overrides)){
-    const to=byName[target], from=carOf(kid);
-    if(!attending.includes(kid) || !to) continue;
-    if(to===from){moved.push(kid); continue;}
-    if(!hasRoom(to)) continue;
-    if(from) from.kids=from.kids.filter(k=>k!==kid);
-    to.kids.push(kid); moved.push(kid);
+  // Först lyfts alla flyttade barn ur sina bilar, sedan placeras de i sina valda bilar. Då spelar
+  // ordningen på flyttarna ingen roll: en placering som gick att göra i Ändra går alltid att återskapa.
+  const moves=Object.entries(overrides).filter(([kid,target])=>attending.includes(kid) && byName[target]);
+  const baseCar=Object.fromEntries(moves.map(([kid])=>[kid,carOf(kid)]));
+  for(const [kid] of moves){const from=carOf(kid); if(from) from.kids=from.kids.filter(k=>k!==kid);}
+  const bounced=[];
+  for(const [kid,target] of moves){const to=byName[target]; if(hasRoom(to)) to.kids.push(kid); else bounced.push(kid);}
+  // Barn vars valda bil inte längre har plats (t.ex. färre platser nu) placeras automatiskt igen.
+  for(const kid of bounced){
+    const c=(baseCar[kid] && hasRoom(baseCar[kid])) ? baseCar[kid] : cars.filter(hasRoom).sort((a,b)=>(b.seats-b.kids.length)-(a.seats-a.kids.length))[0];
+    if(c) c.kids.push(kid);
   }
+  const moved=moves.map(([kid])=>kid).filter(kid=>carOf(kid) && carOf(kid)!==baseCar[kid]);
   return {cars,unplaced:attending.filter(k=>!carOf(k)),moved};
 }
 
