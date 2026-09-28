@@ -8,11 +8,14 @@ export function clampSeats(n){const v=Number(n); return Number.isFinite(v)?Math.
 // Platser = antal barn bilen tar, inklusive förarens eget barn.
 export function seatsFor(state,date,dir,name){return clampSeats(state.seatOverride[key(date,dir,name)] ?? state.seats[name])}
 
-export function calculate(state, dates){
+// today (ISO-datum): träningar före detta datum räknas som genomförda i "soFar".
+export function calculate(state, dates, today){
   const drives=Object.fromEntries(girls.map(g=>[g,0]));
   const attends=Object.fromEntries(girls.map(g=>[g,0]));
   const result={};
+  let soFar=null;
   for(const x of dates){
+    if(!soFar && x.date>=today) soFar={drives:{...drives},attends:{...attends}};
     for(const g of girls) if(state.attendance[g][x.day]==="J") attends[g]++;
     result[x.date]={};
     const needed=girls.filter(g=>state.attendance[g][x.day]==="J").length;
@@ -35,5 +38,6 @@ export function calculate(state, dates){
       result[x.date][dir]={drivers,needed,capacity};
     }
   }
-  return {result,drives,attends};
+  soFar??={drives:{...drives},attends:{...attends}};
+  return {result,drives,attends,soFar};
 }

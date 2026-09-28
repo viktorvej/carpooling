@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { monday, weekDates, seasonDates } from "./dates.js";
+import { isoDate, monday, weekDates, seasonDates } from "./dates.js";
 import { key, clampSeats, calculate } from "./schedule.js";
 import { useStoredState } from "./storage.js";
 import HomeSection from "./components/HomeSection.jsx";
@@ -16,7 +16,8 @@ export default function App(){
   const today=new Date();
   const thisWeek=weekDates(today);
   const nextWeek=weekDates(new Date(monday(today).getFullYear(),monday(today).getMonth(),monday(today).getDate()+7));
-  const calc=useMemo(()=>calculate(state,season),[state,season]);
+  const todayIso=isoDate(today);
+  const calc=useMemo(()=>calculate(state,season,todayIso),[state,season,todayIso]);
 
   // picked: {namn: platser} för körningen, eller null för att återställa till automatisk.
   function setTrip(date,dir,picked){
