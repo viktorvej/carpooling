@@ -66,6 +66,12 @@ export function calculate(state, dates, today){
           });
           add(candidates[0],false);
         }
+        // Ta bort automatiskt valda förare som inte behövs (t.ex. när en senare vald bil har många platser).
+        // Baklänges, så att de som stod först i tur behåller sin körning om det går.
+        for(let i=drivers.length-1;i>=0;i--){
+          const d=drivers[i];
+          if(!d.manual && capacity-d.seats>=needed){drivers.splice(i,1); capacity-=d.seats; drives[d.name]--;}
+        }
       }
       const capacity=drivers.reduce((a,d)=>a+d.seats,0);
       result[x.date][dir]={drivers,needed,capacity,...assignCars(drivers,attending,state.carOverride[key(x.date,dir)])};
