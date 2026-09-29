@@ -66,8 +66,9 @@ export function answerAttendance(state,date,name,coming){
 
 // Placerar barnen i bilarna:
 //   1. förarens eget barn i egen bil (kan flyttas manuellt)
-//   2. grupper som ska hålla ihop (groups: [[barn]], t.ex. de som åkte i samma bil dit): en grupp följer
-//      med en förare vars barn ingår i gruppen, annars till en bil där hela gruppen får plats
+//   2. grupper som ska hålla ihop (groups: [{driver, kids}], t.ex. bilarna dit): alla sätt att fördela
+//      grupperna på bilarna provas och det som håller ihop flest barn väljs; vid lika hellre samma
+//      förare som gruppen hade, sedan en förare vars barn var med i gruppen
 //   3. resten hos den förare som hittills åkt minst med barnet (together(förare, barn) = antal gånger),
 //      så att förarna får olika sällskap och t.ex. en omväg inte hamnar på samma förare varje gång;
 //      vid lika i bilen med flest lediga platser.
@@ -80,16 +81,28 @@ export function assignCars(drivers, attending, overrides={}, groups=[], together
   const free=c=>c.seats-c.kids.length;
   const carOf=kid=>cars.find(c=>c.kids.includes(kid));
   for(const c of cars) if(attending.includes(c.name)) c.kids.push(c.name);
-  const open=groups.map(g=>g.filter(k=>attending.includes(k)));
-  const fill=(group,car)=>{for(const k of group) if(!carOf(k) && hasRoom(car)) car.kids.push(k);};
-  for(const car of cars){
-    const i=open.findIndex(g=>g.includes(car.name));
-    if(i>=0){fill(open[i],car); open.splice(i,1);}
-  }
-  for(const group of open.sort((a,b)=>b.length-a.length)){
-    const rest=group.filter(k=>!carOf(k));
-    const car=cars.filter(c=>free(c)>=rest.length).sort((a,b)=>free(a)-free(b))[0];
-    if(car) fill(rest,car);
+  const fill=(kids,car)=>{for(const k of kids) if(!carOf(k) && hasRoom(car)) car.kids.push(k);};
+  // Grupper med barn som ännu inte sitter i en bil (förarnas egna barn är redan placerade).
+  const open=groups.map(g=>{const all=g.kids.filter(k=>attending.includes(k)); return {driver:g.driver,all,kids:all.filter(k=>!carOf(k))};}).filter(g=>g.kids.length);
+  // Varje grupp kan gå till en av bilarna eller ingen (-1). Med ett lag blir det bara några tiotal kombinationer.
+  if(open.length && (cars.length+1)**open.length<=20000){
+    let best=null, bestScore=-1;
+    const assign=new Array(open.length);
+    const score=()=>{
+      const left=cars.map(free); let s=0;
+      open.forEach((g,i)=>{
+        const c=assign[i]; if(c<0) return;
+        const n=Math.min(g.kids.length,left[c]); left[c]-=n;
+        s+=n*100 + (n===g.kids.length?10:0) + (cars[c].name===g.driver?2:0) + (g.all.includes(cars[c].name)?1:0);
+      });
+      return s;
+    };
+    const search=i=>{
+      if(i===open.length){const s=score(); if(s>bestScore){bestScore=s; best=[...assign];} return;}
+      for(let c=-1;c<cars.length;c++){assign[i]=c; search(i+1);}
+    };
+    search(0);
+    open.forEach((g,i)=>{if(best[i]>=0) fill(g.kids,cars[best[i]]);});
   }
   for(const kid of attending){
     if(carOf(kid)) continue;
@@ -194,7 +207,7 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
       }
       const capacity=drivers.reduce((a,d)=>a+d.seats,0);
       // Hem: barnen som åkte i samma bil dit hålls ihop så långt det går, oavsett vem som kör.
-      const groups=dir==="hem" ? result[x.date].dit.cars.map(c=>c.kids) : [];
+      const groups=dir==="hem" ? result[x.date].dit.cars.map(c=>({driver:c.name,kids:c.kids})) : [];
       const placed=assignCars(drivers,attending,state.carOverride[key(x.date,dir)],groups,(d,k)=>rides[d]?.[k]??0);
       for(const c of placed.cars) for(const k of c.kids) if(k!==c.name && rides[c.name]) rides[c.name][k]++;
       result[x.date][dir]={drivers,needed,capacity,declined,...placed};
