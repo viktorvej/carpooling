@@ -64,18 +64,36 @@ export function answerAttendance(state,date,name,coming){
   return {...state,answers:{...state.answers,[date]:{...state.answers[date],[name]:coming}},attendanceOverride:setDate(state.attendanceOverride,date,o)};
 }
 
-// Placerar barnen i bilarna: förarens eget barn i egen bil (kan flyttas manuellt), resten i bilen med flest lediga platser.
-// Manuella flyttar (overrides: {barn: förare}) läggs sedan ovanpå, en i taget, så att bara
-// det flyttade barnet byter bil och de andra stannar där de automatiskt placerades.
-export function assignCars(drivers, attending, overrides={}){
+// Placerar barnen i bilarna:
+//   1. förarens eget barn i egen bil (kan flyttas manuellt)
+//   2. grupper som ska hålla ihop (groups: [[barn]], t.ex. de som åkte i samma bil dit): en grupp följer
+//      med en förare vars barn ingår i gruppen, annars till en bil där hela gruppen får plats
+//   3. resten hos den förare som hittills åkt minst med barnet (together(förare, barn) = antal gånger),
+//      så att förarna får olika sällskap och t.ex. en omväg inte hamnar på samma förare varje gång;
+//      vid lika i bilen med flest lediga platser.
+// Manuella flyttar (overrides: {barn: förare}) läggs sedan ovanpå, så att bara det flyttade barnet
+// byter bil och de andra stannar där de placerades.
+export function assignCars(drivers, attending, overrides={}, groups=[], together=()=>0){
   const cars=drivers.map(d=>({name:d.name,seats:d.seats,kids:[]}));
   const byName=Object.fromEntries(cars.map(c=>[c.name,c]));
   const hasRoom=c=>c.kids.length<c.seats;
+  const free=c=>c.seats-c.kids.length;
   const carOf=kid=>cars.find(c=>c.kids.includes(kid));
   for(const c of cars) if(attending.includes(c.name)) c.kids.push(c.name);
+  const open=groups.map(g=>g.filter(k=>attending.includes(k)));
+  const fill=(group,car)=>{for(const k of group) if(!carOf(k) && hasRoom(car)) car.kids.push(k);};
+  for(const car of cars){
+    const i=open.findIndex(g=>g.includes(car.name));
+    if(i>=0){fill(open[i],car); open.splice(i,1);}
+  }
+  for(const group of open.sort((a,b)=>b.length-a.length)){
+    const rest=group.filter(k=>!carOf(k));
+    const car=cars.filter(c=>free(c)>=rest.length).sort((a,b)=>free(a)-free(b))[0];
+    if(car) fill(rest,car);
+  }
   for(const kid of attending){
     if(carOf(kid)) continue;
-    const c=cars.filter(hasRoom).sort((a,b)=>(b.seats-b.kids.length)-(a.seats-a.kids.length))[0];
+    const c=cars.filter(hasRoom).sort((a,b)=>together(a.name,kid)-together(b.name,kid) || free(b)-free(a))[0];
     if(c) c.kids.push(kid);
   }
   // Först lyfts alla flyttade barn ur sina bilar, sedan placeras de i sina valda bilar. Då spelar
@@ -118,6 +136,8 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
   const drives=Object.fromEntries(girls.map(g=>[g,0]));
   const dirDrives=Object.fromEntries(girls.map(g=>[g,{dit:0,hem:0}]));
   const attends=Object.fromEntries(girls.map(g=>[g,0]));
+  // rides[förare][barn]: hur många gånger barnet åkt med föraren hittills under säsongen.
+  const rides=Object.fromEntries(girls.map(d=>[d,Object.fromEntries(girls.map(k=>[k,0]))]));
   const result={};
   let soFar=null;
   for(const x of dates){
@@ -173,7 +193,11 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
         }
       }
       const capacity=drivers.reduce((a,d)=>a+d.seats,0);
-      result[x.date][dir]={drivers,needed,capacity,declined,...assignCars(drivers,attending,state.carOverride[key(x.date,dir)])};
+      // Hem: barnen som åkte i samma bil dit hålls ihop så långt det går, oavsett vem som kör.
+      const groups=dir==="hem" ? result[x.date].dit.cars.map(c=>c.kids) : [];
+      const placed=assignCars(drivers,attending,state.carOverride[key(x.date,dir)],groups,(d,k)=>rides[d]?.[k]??0);
+      for(const c of placed.cars) for(const k of c.kids) if(k!==c.name && rides[c.name]) rides[c.name][k]++;
+      result[x.date][dir]={drivers,needed,capacity,declined,...placed};
     }
   }
   soFar??={drives:{...drives},attends:{...attends}};
