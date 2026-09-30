@@ -3,7 +3,7 @@ import { isoDate, seasonDates, isDone } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { isPreview } from "./env.js";
-import { key, clampSeats, calculate, withAttendance, answerAttendance, answerDrive } from "./schedule.js";
+import { key, clampSeats, calculate, withAttendance, answerAttendance, answerDrive, ownerOf } from "./schedule.js";
 import { useAppState, useDeviceValue } from "./storage.js";
 import { useTab } from "./useTab.js";
 import Onboarding from "./components/Onboarding.jsx";
@@ -66,7 +66,7 @@ export default function App(){
       for(const k of Object.keys(seatOverride)) if(k.startsWith(prefix)) delete seatOverride[k];
       if(picked && Object.keys(picked).length){
         manual[key(date,dir)]=Object.keys(picked);
-        for(const [name,seats] of Object.entries(picked)) if(seats!==s.seats[name]) seatOverride[key(date,dir,name)]=seats;
+        for(const [name,seats] of Object.entries(picked)) if(seats!==s.seats[ownerOf(name)]) seatOverride[key(date,dir,name)]=seats;
       }
       s={...s,manual,seatOverride};
       // Valda förare i Ändra gäller: en borttagen förare tappar sin bekräftelse, och en som valts

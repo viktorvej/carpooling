@@ -1,3 +1,4 @@
+import { carLabel } from "../schedule.js";
 import { useRef, useState } from "react";
 
 const ABSENT="__absent";
@@ -42,14 +43,14 @@ export default function CarBoard({cars,unplaced,absent,moved=[],onMove}){
   const box=(target,className,head,kids)=>{
     const active=ghost||selected, kid=ghost?.kid??selected;
     const state=active&&target!==null ? (canDrop(kid,target)?(over===target?" over":" can-drop"):" no-drop") : "";
-    return <div className={"car-box "+className+state} data-drop={target??undefined} onClick={e=>{if(selected && target && !e.target.closest(".chip")) drop(selected,target);}}>
+    return <div key={target??"unplaced"} className={"car-box "+className+state} data-drop={target??undefined} onClick={e=>{if(selected && target && !e.target.closest(".chip")) drop(selected,target);}}>
       <div className="car-head">{head}</div>
       <div className="chips">{kids}</div>
     </div>;
   };
 
   return <div className="cars">
-    {cars.map(c=>box(c.name,c.kids.length>=c.seats?"full":"",<><b>{c.name}s bil</b><span>{c.kids.length}/{c.seats}</span></>,c.kids.map(k=>chip(k,k===c.name?" own":""))))}
+    {cars.map(c=>box(c.name,c.kids.length>=c.seats?"full":"",<><b>{carLabel(c.name)}</b><span>{c.kids.length}/{c.seats}</span></>,c.kids.map(k=>chip(k,k===c.name?" own":""))))}
     {unplaced.length>0 && box(null,"short",<b>Utan plats</b>,unplaced.map(k=>chip(k)))}
     {box(ABSENT,"absent",<b>Deltar inte</b>,absent.length?absent.map(k=>chip(k," off")):<span className="muted">Alla är med</span>)}
     {selected && <p className="muted hint">Tryck på en bil för att flytta {selected}.</p>}

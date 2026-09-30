@@ -1,4 +1,7 @@
 export const girls = ["Edda","Freja","Signe","Lo","Tyra","Lykke","Alma"];
+// Bor inom ett par hundra meter från varandra. Åker i samma bil när en av dem kör och alla som är med
+// får plats (se assignCars).
+export const neighbours = ["Edda","Signe","Lo","Freja","Tyra"];
 export const trainingDays = ["Måndag","Tisdag","Torsdag"];
 export const attendanceDefaults = {
   Edda:{Måndag:"J",Tisdag:"J",Torsdag:"J"},

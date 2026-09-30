@@ -1,3 +1,4 @@
+import { ownerOf, isSecondCar } from "../schedule.js";
 import { isoDate, monday, fmt, fmtTime, trainingTime } from "../dates.js";
 import { now } from "../clock.js";
 import AnswerButtons from "./AnswerButtons.jsx";
@@ -23,7 +24,7 @@ export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false})
         <div className="route-label">{dir==="dit"?"🚗 DIT":"🏠 HEM"}{time&&<span title={dir==="dit"?"Träningen börjar":"Träningen slutar"}>{fmtTime(dir==="dit"?time.start:time.end)}</span>}</div>
         <div>
           {r.drivers.length ? r.drivers.map((d,i)=><div className="driver-car" key={d.name}>
-            <span className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(d.name)}</b>{d.confirmed&&<span className="driver-ok" title="Föraren har bekräftat körningen">✓</span>}{!d.confirmed&&soon&&<small className="unconfirmed-driver" title="Föraren har inte bekräftat körningen">EJ BEKRÄFTAD</small>}<small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.manual&&<small>MANUELL</small>}</span>
+            <span className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(ownerOf(d.name))}{isSecondCar(d.name)&&" (bil 2)"}</b>{d.confirmed&&<span className="driver-ok" title="Föraren har bekräftat körningen">✓</span>}{!d.confirmed&&soon&&<small className="unconfirmed-driver" title="Föraren har inte bekräftat körningen">EJ BEKRÄFTAD</small>}<small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.manual&&<small>MANUELL</small>}</span>
             {(()=>{const others=r.cars[i].kids.filter(k=>k!==d.name); return others.length>0 && <span className="car-kids">med {others.map((k,j)=><span key={k}>{j>0&&", "}{r.moved.includes(k)?<span className="moved" title="Manuellt flyttad">{kidName(k)}</span>:kidName(k)}</span>)}</span>;})()}
           </div>) : <div className="driver-car">—</div>}
           {r.unplaced.length>0 && <div className="driver-car unplaced">Utan plats: {r.unplaced.join(", ")}</div>}

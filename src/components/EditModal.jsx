@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { girls } from "../data.js";
 import { fmt } from "../dates.js";
-import { key, seatOptions, clampSeats, seatsFor, assignCars } from "../schedule.js";
+import { key, seatOptions, clampSeats, seatsFor, assignCars, SECOND_CAR } from "../schedule.js";
 import CarBoard from "./CarBoard.jsx";
 
 export default function EditModal({edit,calc,state,onSave,onClose}){
@@ -10,7 +10,9 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
   const [attending,setAttending]=useState(day.attending);
   // Förarna låses bara som manuella om användaren faktiskt ändrat dem (eller de redan var manuella).
   const [touched,setTouched]=useState(false);
-  const toggle=g=>{setTouched(true); setPicked(p=>{const n={...p}; if(g in n) delete n[g]; else n[g]=seatsFor(state,edit.date,edit.dir,g); return n;});};
+  // Tar man bort en familjs bil försvinner även familjens andra bil.
+  const toggle=g=>{setTouched(true); setPicked(p=>{const n={...p}; if(g in n){delete n[g]; delete n[g+SECOND_CAR];} else n[g]=seatsFor(state,edit.date,edit.dir,g); return n;});};
+  const setSeats=(name,seats)=>{setTouched(true); setPicked(p=>({...p,[name]:clampSeats(seats)}));};
   const lockDrivers=frozen||touched||r.drivers.some(d=>d.manual);
   const needed=attending.length;
   const capacity=Object.values(picked).reduce((a,b)=>a+b,0), short=capacity<needed;
@@ -37,7 +39,13 @@ export default function EditModal({edit,calc,state,onSave,onClose}){
     <h4 className="modal-subtitle">{frozen?"Körde":"Kör"}</h4>
     <div className="modal-drivers">{girls.map(g=><div className={"modal-driver"+(g in picked?" on":"")} key={g}>
       <label><input type="checkbox" checked={g in picked} onChange={()=>toggle(g)}/>{g}</label>
-      {g in picked && <select value={picked[g]} onChange={e=>{setTouched(true); setPicked(p=>({...p,[g]:clampSeats(e.target.value)}));}}>{seatOptions.map(n=><option key={n} value={n}>{n} pl</option>)}</select>}
+      {g in picked && !(g+SECOND_CAR in picked) && <button type="button" className="add-car" onClick={()=>toggle(g+SECOND_CAR)}>+ Bil 2</button>}
+      {g in picked && <select value={picked[g]} onChange={e=>setSeats(g,e.target.value)}>{seatOptions.map(n=><option key={n} value={n}>{n} pl</option>)}</select>}
+      {g+SECOND_CAR in picked && <div className="second-car">
+        <span>{g}s bil 2</span>
+        <button type="button" className="link" onClick={()=>toggle(g+SECOND_CAR)}>Ta bort</button>
+        <select value={picked[g+SECOND_CAR]} onChange={e=>setSeats(g+SECOND_CAR,e.target.value)}>{seatOptions.map(n=><option key={n} value={n}>{n} pl</option>)}</select>
+      </div>}
     </div>)}</div>
     <div className={"capacity"+(short?" short":"")}>{needed} barn · {capacity} platser{short&&(frozen?` · ${needed-capacity} saknas`:" · resten fylls på automatiskt")}</div>
     <h4 className="modal-subtitle">{frozen?"Vem åkte med vem":"Vem åker med vem"} <span>dra barnen mellan bilarna · deltar-ändringar gäller både dit och hem</span></h4>

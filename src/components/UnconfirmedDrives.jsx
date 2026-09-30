@@ -1,5 +1,5 @@
 import { fmt, isoDate } from "../dates.js";
-import { ANSWER_WINDOW_DAYS } from "../schedule.js";
+import { ANSWER_WINDOW_DAYS, driverLabel } from "../schedule.js";
 
 // Admin: körningar inom en vecka där föraren inte bekräftat, och körningar som saknar förare.
 export default function UnconfirmedDrives({calc,season,today}){
@@ -7,7 +7,7 @@ export default function UnconfirmedDrives({calc,season,today}){
   const weekAhead=isoDate(end);
   const rows=season.filter(x=>!calc.result[x.date].done && x.date<=weekAhead).flatMap(x=>["dit","hem"].flatMap(dir=>{
     const r=calc.result[x.date][dir];
-    const out=r.drivers.filter(d=>!d.confirmed).map(d=>({x,dir,text:d.name}));
+    const out=r.drivers.filter(d=>!d.confirmed).map(d=>({x,dir,text:driverLabel(d.name)}));
     if(r.capacity<r.needed) out.push({x,dir,text:`${r.needed-r.capacity} platser saknas`,problem:true});
     return out;
   }));

@@ -1,6 +1,6 @@
 import { isoDate, fmt, fmtTime, trainingTime } from "../dates.js";
 import { now } from "../clock.js";
-import { answerState } from "../schedule.js";
+import { answerState, SECOND_CAR, driverLabel } from "../schedule.js";
 import DayCard from "./DayCard.jsx";
 import AnswerButtons from "./AnswerButtons.jsx";
 
@@ -21,14 +21,15 @@ function kidStatus(day,k){
 
 // Vad gäller för min familj åt ett håll: kör jag, och vem ska med? Annars: vem åker mitt barn med?
 function myTrip(day,r,me){
-  const own=r.cars.find(c=>c.name===me);
+  const own=r.cars.find(c=>c.name===me), second=r.cars.find(c=>c.name===me+SECOND_CAR);
   const car=r.cars.find(c=>c.kids.includes(me));
   if(own){
     const others=own.kids.filter(k=>k!==me);
-    const elsewhere=car && car!==own && <> · {me} åker med <b>{car.name}</b></>;
-    return {drive:true,text:<>Du kör{others.length?<> – ta med {joinList(others.map(k=>kidStatus(day,k)))}</>:" – inga fler barn"}{elsewhere}</>};
+    const elsewhere=car && car!==own && <> · {me} åker med <b>{driverLabel(car.name)}</b></>;
+    const bil2=second && <> · Bil 2 tar med {second.kids.length?joinList(second.kids.map(k=>kidStatus(day,k))):"inga barn"}</>;
+    return {drive:true,text:<>Du kör{others.length?<> – ta med {joinList(others.map(k=>kidStatus(day,k)))}</>:" – inga fler barn"}{bil2}{elsewhere}</>};
   }
-  if(car) return {text:<>{me} åker med <b>{car.name}</b></>};
+  if(car) return {text:<>{me} åker med <b>{driverLabel(car.name)}</b></>};
   return {warn:true,text:<>⚠️ {me} har ingen plats än</>};
 }
 
