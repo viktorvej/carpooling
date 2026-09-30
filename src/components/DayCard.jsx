@@ -25,7 +25,7 @@ export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false})
           <div className={"capacity"+(short?" short":"")}>{r.needed} barn<br/>{r.capacity} platser{short&&<><br/>{r.needed-r.capacity} saknas</>}</div></div>
         <div>
           {r.drivers.length ? r.drivers.map((d,i)=><div className="driver-car" key={d.name}>
-            <div className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(ownerOf(d.name))}{isSecondCar(d.name)&&" (bil 2)"}</b><small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.confirmed&&<span className="driver-ok" title="Föraren har bekräftat körningen">✓</span>}{!d.confirmed&&soon&&<small className="unconfirmed-driver" title="Föraren har inte bekräftat körningen">EJ BEKRÄFTAD</small>}{d.manual&&<small>MANUELL</small>}</div>
+            <div className="driver"><b className={"driver-name"+(d.manual?" manual-driver":"")}>{name(ownerOf(d.name))}{isSecondCar(d.name)&&" (2)"}</b><small className="seats">{r.cars[i].kids.length}/{d.seats}</small>{d.confirmed&&<span className="driver-ok" title="Föraren har bekräftat körningen">✓</span>}{!d.confirmed&&soon&&<small className="unconfirmed-driver" title="Föraren har inte bekräftat körningen">EJ BEKRÄFTAD</small>}{d.manual&&<small>MANUELL</small>}</div>
             {(()=>{const others=r.cars[i].kids.filter(k=>k!==d.name); return others.length>0 && <div className="car-kids">med {others.map((k,j)=><span key={k}>{j>0&&", "}{r.moved.includes(k)?<span className="moved" title="Manuellt flyttad">{kidName(k)}</span>:kidName(k)}</span>)}</div>;})()}
           </div>) : <div className="driver-car">—</div>}
           {r.unplaced.length>0 && <div className="driver-car unplaced">Utan plats: {r.unplaced.join(", ")}</div>}
