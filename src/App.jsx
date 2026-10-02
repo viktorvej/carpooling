@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { isoDate, seasonDates, isDone } from "./dates.js";
+import { isoDate, seasonDates, isDone, lockedUntil } from "./dates.js";
 import { dayNames, girls } from "./data.js";
 import { now, mockToday } from "./clock.js";
 import { isPreview } from "./env.js";
-import { key, clampSeats, calculate, withAttendance, answerAttendance, answerDrive, ownerOf } from "./schedule.js";
+import { key, clampSeats, calculate, withAttendance, answerAttendance, answerDrive, ownerOf, withLocks } from "./schedule.js";
 import { useAppState, useDeviceValue } from "./storage.js";
 import { useTab } from "./useTab.js";
 import Onboarding from "./components/Onboarding.jsx";
@@ -45,6 +45,19 @@ export default function App(){
     setState(s=>({...s,history:{...frozen,...s.history}}));
   },[calc,season,state.history,setState,status.canFreeze]);
 
+  // Lås förarna för den närmaste veckan, så att resten av säsongen kan räknas om utan att de flyttas.
+  // Nya förare i en låst körning (ersättare, bekräftade) läggs till i låsningen så att de också ligger fast.
+  useEffect(()=>{
+    if(!status.canFreeze) return;
+    const until=lockedUntil(now()), trips={};
+    for(const x of season){
+      if(x.date>=until) break;
+      if(calc.result[x.date].done) continue;
+      for(const dir of ["dit","hem"]) trips[key(x.date,dir)]=calc.result[x.date][dir].drivers.map(d=>d.name);
+    }
+    setState(s=>withLocks(s,trips));
+  },[calc,season,setState,status.canFreeze]);
+
   // picked: {namn: platser} för körningen, eller null för att återställa till automatisk.
   // För passerade träningar skrivs det direkt till historiken, utan automatisk påfyllning.
   // moves: {barn: förare} för manuellt flyttade barn i körningen.
@@ -69,10 +82,18 @@ export default function App(){
         for(const [name,seats] of Object.entries(picked)) if(seats!==s.seats[ownerOf(name)]) seatOverride[key(date,dir,name)]=seats;
       }
       s={...s,manual,seatOverride};
+      // I en låst körning ersätter valda förare låsningen; Automatisk tar bort den så att körningen låses
+      // om med turordningen (övriga körningar i veckan påverkas inte).
+      const trip=key(date,dir);
+      if(s.locked[trip] && (picked || resetAttendance)){
+        const locked={...s.locked};
+        if(picked) locked[trip]=Object.keys(picked); else delete locked[trip];
+        s={...s,locked};
+      }
       // Valda förare i Ändra gäller: en borttagen förare tappar sin bekräftelse, och en som valts
       // trots "Kan inte köra" räknas inte längre som avböjd.
       if(picked){
-        const trip=key(date,dir), keep=(obj,f)=>{const list=(obj[trip]||[]).filter(f), o={...obj}; if(list.length) o[trip]=list; else delete o[trip]; return o;};
+        const keep=(obj,f)=>{const list=(obj[trip]||[]).filter(f), o={...obj}; if(list.length) o[trip]=list; else delete o[trip]; return o;};
         s={...s,driverConfirmed:keep(s.driverConfirmed,n=>n in picked),declined:keep(s.declined,n=>!(n in picked))};
       }
       return attending ? withAttendance(s,date,dayNames[new Date(date+"T00:00:00").getDay()],attending,{reset:resetAttendance}) : s;

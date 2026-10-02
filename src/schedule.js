@@ -156,6 +156,18 @@ export function answerDrive(state,date,dir,name,answer){
 // 0.5 ger jämn fördelning utan att försämra rättvisan i antal körningar (testat över en hel säsong).
 export const DIR_BALANCE_WEIGHT=0.5;
 
+// Lägger till förarna från beräkningen sist i körningarnas låsning ({"datum|dit": [förare]}), eller låser
+// körningen om den inte är låst än. Förare tas aldrig bort, så den som ångrar "Kan inte köra" får tillbaka
+// sin plats före ersättaren.
+export function withLocks(state,trips){
+  const locked={...state.locked}; let changed=false;
+  for(const [t,names] of Object.entries(trips)){
+    const cur=locked[t], add=names.filter(n=>!cur?.includes(n));
+    if(!cur || add.length){locked[t]=[...(cur||[]),...add]; changed=true;}
+  }
+  return changed ? {...state,locked} : state;
+}
+
 // now (Date): träningar som är genomförda (isDone) räknas in i "soFar" och används från historiken.
 export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
   const today=isoDate(now);
@@ -177,7 +189,7 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
     for(const g of attending) attends[g]++;
     const attendanceChanged=frozen ? !!frozen.attendanceEdited : planned.changed;
     const daysUntil=Math.round((new Date(x.date+"T00:00:00")-new Date(today+"T00:00:00"))/864e5);
-    result[x.date]={attending,done,frozen:!!frozen,attendanceChanged,
+    result[x.date]={attending,done,frozen:!!frozen,attendanceChanged,locked:!frozen && ["dit","hem"].some(dir=>state.locked[key(x.date,dir)]),
       unconfirmed:frozen?[]:planned.unconfirmed, answered:frozen?{}:planned.answered, maybe:frozen?[]:planned.maybe,
       // Inom svarsfönstret: då visas påminnelser och obekräftade barn markeras.
       soon:!done && daysUntil>=0 && daysUntil<=ANSWER_WINDOW_DAYS};
@@ -188,6 +200,8 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
       const trip=key(x.date,dir);
       // Förare som bekräftat ("Jag kör") låses som manuella; de som sagt "Kan inte köra" väljs inte automatiskt.
       const declined=state.declined[trip]||[], confirmed=state.driverConfirmed[trip]||[];
+      // Låst körning (se lockedUntil): förarna som låstes, i ordning. Ersättare läggs till sist.
+      const lock=state.locked[trip];
       if(frozen){
         drivers=frozen[dir].drivers;
         for(const d of drivers){drives[ownerOf(d.name)]++; dirDrives[ownerOf(d.name)][dir]++;}
@@ -197,6 +211,14 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
         const add=(name,manual)=>{const seats=seatsFor(state,x.date,dir,name); drivers.push({name,seats,manual,confirmed:confirmed.includes(ownerOf(name))}); capacity+=seats; drives[ownerOf(name)]++; dirDrives[ownerOf(name)][dir]++;};
         for(const g of state.manual[trip]||[]) if(!declined.includes(ownerOf(g))) add(g,true);
         for(const g of confirmed) if(!drivers.some(d=>d.name===g) && !declined.includes(g)) add(g,false);
+        // De låsta förarna går före turordningen, så länge de behövs. Den som inte kan köra eller vars barn
+        // inte är med hoppas över; först när de låsta inte räcker väljs en ny förare enligt turordningen.
+        const fromLock=new Set();
+        for(const g of lock||[]){
+          if(capacity>=needed) break;
+          if(drivers.some(d=>d.name===g) || declined.includes(ownerOf(g)) || !attending.includes(ownerOf(g))) continue;
+          add(g,false); fromLock.add(g);
+        }
         // Turordning: minst körningar per deltagen träning först. Den som redan kört fler åt det här
         // hållet än åt andra hållet (och kan köra båda) får lägre prioritet, så att dit/hem fördelas jämnt.
         const score=g=>{
@@ -212,10 +234,11 @@ export function calculate(state, dates, now, dirWeight=DIR_BALANCE_WEIGHT){
           add(candidates[0],false);
         }
         // Ta bort automatiskt valda förare som inte behövs (t.ex. när en senare vald bil har många platser).
-        // Baklänges, så att de som stod först i tur behåller sin körning om det går.
-        for(let i=drivers.length-1;i>=0;i--){
+        // Baklänges, så att de som stod först i tur behåller sin körning om det går. Låsta förare tas också
+        // bort när det blivit en bil för mycket, men först efter nyvalda förare.
+        for(const locked of [false,true]) for(let i=drivers.length-1;i>=0;i--){
           const d=drivers[i];
-          if(!d.manual && !d.confirmed && capacity-d.seats>=needed){drivers.splice(i,1); capacity-=d.seats; drives[ownerOf(d.name)]--; dirDrives[ownerOf(d.name)][dir]--;}
+          if(!d.manual && !d.confirmed && fromLock.has(d.name)===locked && capacity-d.seats>=needed){drivers.splice(i,1); capacity-=d.seats; drives[ownerOf(d.name)]--; dirDrives[ownerOf(d.name)][dir]--;}
         }
       }
       const capacity=drivers.reduce((a,d)=>a+d.seats,0);

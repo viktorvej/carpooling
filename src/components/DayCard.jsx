@@ -15,7 +15,7 @@ export default function DayCard({x,calc,me,onEdit,onAnswer,hideWeekBadge=false})
   const kidName=k=><>{name(k)}{!past&&day.answered[k]===true&&<span className="kid-answered" title="Har svarat att de kommer">✓</span>}</>;
   return <section className={"day-card "+(past?"past ":"")+(current&&!hideWeekBadge?"current ":"")}>
     <div className="day-head"><div><b>{fmt(x.date)}</b></div>
-      <div className="day-badges">{day.attendanceChanged&&<em className="manual-badge" title="Närvaron har ändrats för just den här träningen">NÄRVARO ÄNDRAD</em>}{current&&!hideWeekBadge&&<em>AKTUELL VECKA</em>}</div></div>
+      <div className="day-badges">{day.attendanceChanged&&<em className="manual-badge" title="Närvaron har ändrats för just den här träningen">NÄRVARO ÄNDRAD</em>}{current&&!hideWeekBadge&&<em>AKTUELL VECKA</em>}{!past&&day.locked&&<em className="locked-badge" title="Förarna är låsta. De byts bara om någon inte kan köra eller om körningen ändras.">🔒 LÅST</em>}</div></div>
     {!past && onAnswer && me && <AnswerButtons day={day} me={me} label={me+":"} onAnswer={v=>onAnswer(x.date,v)}/>}
     {soon && day.unconfirmed.length>0 && <div className="unconfirmed" title="Planerade men har inte svarat om de kommer">⚠️ Har inte svarat: {day.unconfirmed.map((k,j)=><span key={k}>{j>0&&", "}{k===me?<span className="me-name">{k}</span>:k}</span>)}</div>}
     {["dit","hem"].map(dir=>{

@@ -19,7 +19,7 @@ service cloud.firestore {
     match /teams/{team}/trips/{trip} {
       allow read: if true;
       allow write: if request.resource == null
-        || request.resource.data.keys().hasOnly(['manual', 'seatOverride', 'carOverride', 'confirmed', 'declined']);
+        || request.resource.data.keys().hasOnly(['manual', 'seatOverride', 'carOverride', 'confirmed', 'declined', 'locked']);
     }
   }
 }

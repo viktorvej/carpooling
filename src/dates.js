@@ -12,6 +12,9 @@ export function isDone(x,now){
 // Lokal tid, inte toISOString() som räknar i UTC och ger föregående dag i Sverige.
 export function isoDate(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")}
 export function monday(d){const x=new Date(d); const n=(x.getDay()+6)%7; x.setDate(x.getDate()-n); x.setHours(0,0,0,0); return x}
+// Kommande vecka låses efter torsdagens träning (från fredag 00.00), så att förarna kan planera i förväg.
+// Träningar före det returnerade datumet (måndagen efter den låsta veckan) är låsta.
+export function lockedUntil(now){const d=new Date(now); d.setDate(d.getDate()+3); const m=monday(d); m.setDate(m.getDate()+7); return isoDate(m)}
 export function fmt(date){return new Date(date+"T00:00:00").toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"short"})}
 export function seasonDates(){
   const out=[]; const d=new Date(seasonStart);
